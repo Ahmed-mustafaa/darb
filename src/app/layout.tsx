@@ -30,6 +30,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
+        <footer className="version" aria-label="App version">
+          {locale === 'ar' ? 'الإصدار' : 'Version'} {process.env.NEXT_PUBLIC_APP_VERSION} · {process.env.NEXT_PUBLIC_BUILD_TIME}
+        </footer>
         <Suspense fallback={null}>
           <ResultAlert messages={flashMessages(locale)} title={locale === 'ar' ? 'تم بنجاح' : 'Done'} ok={locale === 'ar' ? 'حسنًا' : 'OK'} />
         </Suspense>

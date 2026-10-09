@@ -2,7 +2,7 @@ import { getLocale, getT } from '@/lib/i18n';
 import { BrandMark, LangSwitch, Notice } from '@/components/ui';
 import { signIn } from './actions';
 
-export default function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
+export default function LoginPage({ searchParams }: { searchParams: { error?: string; detail?: string } }) {
   const locale = getLocale();
   const t = getT(locale);
   return (
@@ -14,6 +14,9 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
         </div>
         <h1>{t('loginTitle')}</h1>
         <Notice error={searchParams.error ? t('loginError') : undefined} />
+        {searchParams.detail && (
+          <p className="small muted mono" style={{ direction: 'ltr', overflowWrap: 'anywhere' }}>{searchParams.detail}</p>
+        )}
         <div className="field">
           <label htmlFor="email">{t('email')}</label>
           <input className="input" id="email" name="email" type="email" autoComplete="email" required dir="ltr" />

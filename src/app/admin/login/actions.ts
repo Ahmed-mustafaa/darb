@@ -9,7 +9,10 @@ export async function signIn(formData: FormData) {
     email: String(formData.get('email') ?? '').trim(),
     password: String(formData.get('password') ?? ''),
   });
-  if (error) redirect('/admin/login?error=1');
+  if (error) {
+    // Pass Supabase's own message along so problems other than a wrong password are visible.
+    redirect(`/admin/login?error=1&detail=${encodeURIComponent(error.message).slice(0, 300)}`);
+  }
   redirect('/admin');
 }
 

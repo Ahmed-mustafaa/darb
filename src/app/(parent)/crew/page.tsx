@@ -134,7 +134,7 @@ export default async function CrewHome() {
                           {morning && <form action={crewMarkChild}><input type="hidden" name="child_id" value={c.child_id} /><button className="btn btn-sm" name="status" value="absent">{t('c_absent')}</button></form>}
                         </>
                       ) : (
-                        <form action={crewMarkChild}><input type="hidden" name="child_id" value={c.child_id} /><button className="btn btn-sm btn-ghost" name="status" value={morning ? 'waiting' : 'picked_up'}>{t('c_undo')}</button></form>
+                        <form action={crewMarkChild}><input type="hidden" name="child_id" value={c.child_id} /><input type="hidden" name="prev" value={c.status} /><button className="btn btn-sm btn-ghost" name="status" value={morning ? 'waiting' : 'picked_up'}>{t('c_undo')}</button></form>
                       )}
                     </span>
                   )}

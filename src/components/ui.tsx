@@ -35,8 +35,9 @@ export function Plate({ letters, number }: { letters: string | null; number: str
 }
 
 export function Notice({ ok, error }: { ok?: string; error?: string }) {
+  // Success is shown by the pop-up (FlashToast); only errors stay on the page.
+  void ok;
   if (error) return <p className="notice bad" role="alert">{error}</p>;
-  if (ok) return <p className="notice ok" role="status">{ok}</p>;
   return null;
 }
 

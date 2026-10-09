@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeEgPhone } from '@/lib/phone';
 import { MIN_PASSWORD, hashPassword } from '@/lib/password';
+import { flash } from '@/lib/flash';
 
 export async function addStaff(f: FormData) {
   const supabase = createClient();
@@ -30,6 +31,7 @@ export async function addStaff(f: FormData) {
     await supabase.from('buses').update({ [col]: data.id }).eq('id', busId);
   }
   revalidatePath('/admin', 'layout');
+  flash('personAdded', { name: full_name });
   redirect('/admin/staff?ok=1');
 }
 
@@ -46,6 +48,7 @@ export async function assignStaff(f: FormData) {
     if (error) redirect('/admin/staff?error=generic');
   }
   revalidatePath('/admin', 'layout');
+  flash('assignmentSaved');
   redirect('/admin/staff?ok=1');
 }
 
@@ -57,6 +60,7 @@ export async function setStaffPassword(f: FormData) {
   const { error } = await supabase.from('staff').update({ password_hash: await hashPassword(password) }).eq('id', String(f.get('id')));
   if (error) redirect('/admin/staff?error=generic');
   revalidatePath('/admin/staff');
+  flash('passwordSet');
   redirect('/admin/staff?ok=pw');
 }
 
@@ -70,5 +74,6 @@ export async function toggleActive(f: FormData) {
   }
   await supabase.from('staff').update({ active }).eq('id', id);
   revalidatePath('/admin', 'layout');
+  flash('staffActive');
   redirect('/admin/staff?ok=1');
 }

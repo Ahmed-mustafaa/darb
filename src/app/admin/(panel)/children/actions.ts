@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeEgPhone } from '@/lib/phone';
 import { parseLatLng } from '@/lib/geo';
+import { flash } from '@/lib/flash';
 
 function back(f: FormData, extra: string) {
   const ret = String(f.get('return') ?? '/admin/children');
@@ -21,6 +22,9 @@ export async function assignChild(f: FormData) {
     .eq('id', String(f.get('child_id')));
   revalidatePath('/admin', 'layout');
   if (error) redirect(back(f, error.message.includes('BUS_FULL') ? 'error=full' : 'error=generic'));
+  const { data: kid } = await supabase.from('children').select('full_name').eq('id', String(f.get('child_id'))).maybeSingle();
+  const { data: bus } = busId ? await supabase.from('buses').select('number').eq('id', busId).maybeSingle() : { data: null };
+  flash(busId ? 'childMoved' : 'childRemoved', { name: kid?.full_name ?? '', n: bus?.number ?? '' });
   redirect(back(f, 'ok=1'));
 }
 
@@ -28,10 +32,13 @@ export async function acceptAll(f: FormData) {
   const supabase = createClient();
   const pairs = JSON.parse(String(f.get('pairs') ?? '[]')) as { childId: string; busId: string }[];
   let failed = false;
+  let done = 0;
   for (const p of pairs) {
     const { error } = await supabase.from('children').update({ bus_id: p.busId }).eq('id', p.childId);
     if (error) failed = true;
+    else done++;
   }
+  if (done) flash('childrenAssigned', { n: done });
   revalidatePath('/admin', 'layout');
   redirect(back(f, failed ? 'error=full' : 'ok=1'));
 }
@@ -80,6 +87,7 @@ export async function addChild(f: FormData) {
   });
   revalidatePath('/admin', 'layout');
   if (error) redirect(`/admin/children?error=${error.message.includes('BUS_FULL') ? 'full' : 'generic'}#add`);
+  flash('childAdded', { name: childName });
   redirect('/admin/children?ok=added');
 }
 
@@ -87,5 +95,6 @@ export async function deleteChild(f: FormData) {
   const supabase = createClient();
   await supabase.from('children').delete().eq('id', String(f.get('child_id')));
   revalidatePath('/admin', 'layout');
+  flash('childDeleted');
   redirect(back(f, 'ok=1'));
 }

@@ -7,6 +7,7 @@ import { quote, type PlanId } from '@/lib/pricing';
 import { MIN_PASSWORD, checkPassword, hashPassword, recordAttempt, tooManyAttempts } from '@/lib/password';
 import { clearParentSession, getParentSession, setParentSession, setStaffSession } from '@/lib/session';
 import { isLocked, loadSettings, nextStep, requireFamily } from '@/lib/parent';
+import { flash } from '@/lib/flash';
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? '');
 const t = (f: FormData, k: string) => s(f, k).trim();
@@ -48,6 +49,7 @@ export async function registerParent(f: FormData) {
     id = data.id;
   }
   setParentSession({ pid: id, phone });
+  flash('accountCreated');
   redirect('/register');
 }
 
@@ -62,6 +64,7 @@ export async function signInParent(f: FormData) {
   await recordAttempt(db, phone, ok);
   if (!ok || !parent) redirect('/signin?error=wrong');
   setParentSession({ pid: parent.id, phone });
+  flash('welcomeBack');
   redirect('/register');
 }
 
@@ -81,6 +84,7 @@ export async function signInStaff(f: FormData) {
   await recordAttempt(db, phone, ok);
   if (!ok) redirect('/crew/signin?error=wrong');
   setStaffSession({ sid: staff.id, phone });
+  flash('welcomeBack');
   redirect('/crew');
 }
 
@@ -95,6 +99,7 @@ export async function saveLocation(f: FormData) {
     .from('parents')
     .update({ home_lat: lat, home_lng: lng, address: t(f, 'address') || null, landmark: t(f, 'landmark') || null })
     .eq('id', fam.parent.id);
+  flash('locationSaved');
   redirect('/register/children');
 }
 
@@ -115,6 +120,7 @@ export async function saveChildren(f: FormData) {
   await db.from('children').delete().eq('parent_id', fam.parent.id);
   const { error } = await db.from('children').insert(kids);
   if (error) redirect('/register/children?error=generic');
+  flash('childrenSaved', { n: count });
   redirect('/register/package');
 }
 
@@ -134,6 +140,7 @@ export async function choosePackage(f: FormData) {
     const { error } = await db.from('payments').insert({ ...row, parent_id: fam.parent.id });
     if (error) redirect('/register/package?error=generic');
   }
+  flash('packageChosen');
   redirect('/register/pay');
 }
 
@@ -170,11 +177,13 @@ export async function submitReceipt(f: FormData) {
     await db.storage.from('payment-proofs').remove([path]);
     redirect(`/register/pay?error=${error.code === '23505' ? 'refused' : 'generic'}`);
   }
+  flash('receiptSent');
   redirect('/parent');
 }
 
 export async function parentSignOut() {
   clearParentSession();
+  flash('signedOut');
   redirect('/');
 }
 

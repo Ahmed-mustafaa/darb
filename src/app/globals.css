@@ -196,3 +196,12 @@ td .sub { display: block; font-size: 12.5px; color: var(--muted); }
 .alert-pop { position: fixed; inset-inline: 12px; top: calc(70px + env(safe-area-inset-top, 0px)); z-index: 1000; background: var(--surface); border: 2px solid var(--accent); border-radius: 16px; padding: 14px 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); font-weight: 600; max-width: 496px; margin-inline: auto; }
 .livegrid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 900px) { .livegrid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ───────── pop-up after actions ───────── */
+.flash { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 160%); z-index: 2000;
+  display: flex; align-items: center; gap: 10px; max-width: min(92vw, 460px); background: var(--ink); color: var(--bg);
+  padding: 12px 16px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); font-weight: 600; font-size: 14.5px;
+  transition: transform .3s cubic-bezier(.2,.8,.2,1); pointer-events: none; }
+.flash.show { transform: translate(-50%, 0); pointer-events: auto; cursor: pointer; }
+.flash-ic { width: 24px; height: 24px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: 13px; flex: none; }
+@media (prefers-reduced-motion: reduce) { .flash { transition: none; } }

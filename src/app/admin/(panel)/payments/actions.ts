@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { autoAssignFamily } from '@/lib/assign';
+import { flash } from '@/lib/flash';
 
 const REASONS = ['not_received', 'wrong_amount', 'unreadable', 'duplicate'];
 
@@ -21,6 +22,7 @@ export async function confirmPayment(f: FormData) {
   // Put the family's children on the best bus straight away; the admin can still move them.
   const assigned = data?.parent_id ? await autoAssignFamily(supabase, data.parent_id) : 0;
   revalidatePath('/admin', 'layout');
+  flash('paymentConfirmed', { n: assigned });
   redirect(`/admin/payments?ok=confirmed&assigned=${assigned}`);
 }
 
@@ -41,6 +43,7 @@ export async function rejectPayment(f: FormData) {
   if (error) redirect('/admin/payments?error=generic');
   // The parent sees the reason on their status page and can send a new receipt.
   revalidatePath('/admin', 'layout');
+  flash('paymentRejected');
   redirect('/admin/payments?ok=rejected');
 }
 
@@ -72,5 +75,6 @@ export async function recordPayment(f: FormData) {
   });
   if (error) redirect(`/admin/payments?error=${error.code === '23505' ? 'duplicate' : 'generic'}#record`);
   revalidatePath('/admin', 'layout');
+  flash('paymentRecorded');
   redirect('/admin/payments?ok=1');
 }

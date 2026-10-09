@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { MIN_PASSWORD, hashPassword } from '@/lib/password';
+import { flash } from '@/lib/flash';
 
 /** The office sets a new password for a parent who forgot theirs. */
 export async function setParentPassword(f: FormData) {
@@ -13,5 +14,6 @@ export async function setParentPassword(f: FormData) {
   const { error } = await supabase.from('parents').update({ password_hash: await hashPassword(password) }).eq('id', String(f.get('id')));
   if (error) redirect('/admin/families?error=generic');
   revalidatePath('/admin/families');
+  flash('passwordSet');
   redirect('/admin/families?ok=1');
 }

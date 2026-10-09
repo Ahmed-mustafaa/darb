@@ -20,7 +20,6 @@ export async function confirmPayment(f: FormData) {
   if (error) redirect('/admin/payments?error=generic');
   // Put the family's children on the best bus straight away; the admin can still move them.
   const assigned = data?.parent_id ? await autoAssignFamily(supabase, data.parent_id) : 0;
-  // Later: send the parent a WhatsApp confirmation here.
   revalidatePath('/admin', 'layout');
   redirect(`/admin/payments?ok=confirmed&assigned=${assigned}`);
 }
@@ -40,7 +39,7 @@ export async function rejectPayment(f: FormData) {
     .eq('id', String(f.get('id')))
     .eq('status', 'awaiting_review');
   if (error) redirect('/admin/payments?error=generic');
-  // Phase 2: tell the parent on WhatsApp why, and let them send a new receipt.
+  // The parent sees the reason on their status page and can send a new receipt.
   revalidatePath('/admin', 'layout');
   redirect('/admin/payments?ok=rejected');
 }

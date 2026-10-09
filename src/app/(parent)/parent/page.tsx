@@ -6,6 +6,7 @@ import { egp } from '@/lib/pricing';
 import { displayPhone } from '@/lib/phone';
 import { parentSignOut } from '../actions';
 import { ParentTracker } from '@/components/tracker-client';
+import { NotifyButton } from '@/components/notify-client';
 
 export default async function ParentHome() {
   const fam = await requireFamily();
@@ -73,6 +74,20 @@ export default async function ParentHome() {
         </section>
       )}
 
+      {paid && (
+        <NotifyButton
+          vapidKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || null}
+          labels={{
+            turnOn: t('n_turnOn'),
+            on: t('n_on'),
+            lead: t('n_lead'),
+            blocked: t('n_blocked'),
+            ios: t('n_ios'),
+            unsupported: t('n_unsupported'),
+            test: t('n_test'),
+          }}
+        />
+      )}
       {paid && (
         <ParentTracker
           locale={locale}

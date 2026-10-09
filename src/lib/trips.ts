@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { distanceKm, type LatLng } from '@/lib/geo';
-import { sendTemplate } from '@/lib/whatsapp';
+import { pushToParent } from '@/lib/push';
 
 type DB = SupabaseClient<any, any, any>;
 export type TripKind = 'morning' | 'afternoon';
@@ -185,7 +185,7 @@ export async function runAlerts(db: DB, tripId: string) {
 }
 
 /**
- * Stores the message for the parent's app and sends it on WhatsApp if set up.
+ * Stores the message for the parent's app and sends it as a phone notification.
  * Trip alerts are sent once per family per trip (a unique index guards this).
  */
 export async function notify(
@@ -196,8 +196,5 @@ export async function notify(
   const row = { parent_id: n.parentId, trip_id: n.perChild ? null : n.tripId, kind: n.kind, params: { ...n.params, trip_id: n.tripId } };
   const { data, error } = await db.from('notifications').insert(row).select('id').maybeSingle();
   if (error || !data) return; // already sent for this trip
-  if (n.kind !== 'next' && n.kind !== 'ten_min') return; // only the arrival alerts go to WhatsApp
-  const { data: parent } = await db.from('parents').select('phone, second_phone').eq('id', n.parentId).maybeSingle();
-  const status = await sendTemplate(n.kind === 'next' ? 'next' : 'ten_min', [parent?.phone, parent?.second_phone], n.params);
-  await db.from('notifications').update({ whatsapp_status: status }).eq('id', data.id);
+  await pushToParent(db, n.parentId, n.kind, row.params);
 }

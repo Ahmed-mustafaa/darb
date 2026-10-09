@@ -3,9 +3,9 @@ import { loadAll, type Staff } from '@/lib/data';
 import { displayPhone } from '@/lib/phone';
 import { Notice } from '@/components/ui';
 import { AutoSubmitSelect } from '@/components/client';
-import { addStaff, assignStaff, toggleActive } from './actions';
+import { addStaff, assignStaff, setStaffPassword, toggleActive } from './actions';
 
-const ERRORS: Record<string, Key> = { name: 'nameRequired', phone: 'invalidPhone', duplicate: 'duplicatePhone', generic: 'errorGeneric' };
+const ERRORS: Record<string, Key> = { name: 'nameRequired', phone: 'invalidPhone', duplicate: 'duplicatePhone', pwshort: 'p_pwShort', generic: 'errorGeneric' };
 
 export default async function StaffPage({ searchParams }: { searchParams: { ok?: string; error?: string } }) {
   const locale = getLocale();
@@ -20,7 +20,7 @@ export default async function StaffPage({ searchParams }: { searchParams: { ok?:
       </div>
       <div className="tablewrap">
         <table>
-          <thead><tr><th>{t('fullName')}</th><th>{t('phone')}</th><th>{t('assignedTo')}</th><th /></tr></thead>
+          <thead><tr><th>{t('fullName')}</th><th>{t('phone')}</th><th>{t('assignedTo')}</th><th>{t('password')}</th><th /></tr></thead>
           <tbody>
             {list.map((p) => {
               const bus = buses.find((b) => (role === 'driver' ? b.driver_id : b.supervisor_id) === p.id);
@@ -44,6 +44,14 @@ export default async function StaffPage({ searchParams }: { searchParams: { ok?:
                     ) : '—'}
                   </td>
                   <td>
+                    <form action={setStaffPassword} className="inline-form">
+                      <input type="hidden" name="id" value={p.id} />
+                      <input className="input input-sm" name="password" type="text" minLength={6} required placeholder={(p as any).password_hash ? '••••••' : t('newPassword')} aria-label={t('password')} style={{ width: 110 }} dir="ltr" autoComplete="off" />
+                      <button className="btn btn-sm" type="submit">{t('save')}</button>
+                    </form>
+                    {!(p as any).password_hash && <span className="sub" style={{ color: 'var(--warn)' }}>{t('noPasswordYet')}</span>}
+                  </td>
+                  <td>
                     <form action={toggleActive}>
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="active" value={p.active ? 'false' : 'true'} />
@@ -64,6 +72,7 @@ export default async function StaffPage({ searchParams }: { searchParams: { ok?:
   return (
     <>
       <div className="page-head"><h1>{t('nav_staff')}</h1></div>
+      <p className="small muted">{t('crewPwHelp')}</p>
       <Notice ok={searchParams.ok ? t('saved') : undefined} error={searchParams.error ? t(ERRORS[searchParams.error] ?? 'errorGeneric') : undefined} />
       <div className="two">
         {table('driver', staff.filter((s) => s.role === 'driver'))}
@@ -86,6 +95,10 @@ export default async function StaffPage({ searchParams }: { searchParams: { ok?:
           <div className="field">
             <label htmlFor="ns-phone">{t('phone')}</label>
             <input className="input mono" id="ns-phone" name="phone" inputMode="tel" placeholder="010 1234 5678" required />
+          </div>
+          <div className="field">
+            <label htmlFor="ns-pw">{t('password')}</label>
+            <input className="input" id="ns-pw" name="password" type="text" minLength={6} required dir="ltr" autoComplete="off" />
           </div>
           <div className="field">
             <label htmlFor="ns-exp">{t('licenseExpiry')}</label>

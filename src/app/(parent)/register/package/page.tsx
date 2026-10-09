@@ -26,7 +26,7 @@ export default async function Package({ searchParams }: { searchParams: { error?
 
   return (
     <form className="stack" action={choosePackage}>
-      <StepHead step={5} t={t} backHref="/register/children" />
+      <StepHead step={4} t={t} backHref="/register/children" />
       <h1>{t('p_pkgTitle')}</h1>
       <p className="lead">{t('p_forKids')} {n} {t('p_kidsWord')}</p>
       <Notice error={searchParams.error ? t('errorGeneric') : undefined} />

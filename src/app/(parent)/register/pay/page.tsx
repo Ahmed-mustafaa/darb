@@ -30,7 +30,7 @@ export default async function Pay({ searchParams }: { searchParams: { error?: st
 
   return (
     <div className="stack">
-      <StepHead step={6} t={t} backHref="/register/package" />
+      <StepHead step={5} t={t} backHref="/register/package" />
       <h1>{t('p_payTitle')}</h1>
       <Notice error={searchParams.error ? t(ERRORS[searchParams.error] ?? 'errorGeneric') : undefined} />
       {pay.status === 'rejected' && pay.reject_reason && (

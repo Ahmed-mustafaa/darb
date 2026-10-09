@@ -13,7 +13,7 @@ export default async function Location({ searchParams }: { searchParams: { error
   const p = fam.parent;
   return (
     <form className="stack" action={saveLocation}>
-      <StepHead step={3} t={t} />
+      <StepHead step={2} t={t} />
       <h1>{t('p_locTitle')}</h1>
       <p className="lead">{t('p_locLead')}</p>
       <Notice error={searchParams.error ? t('p_locRequired') : undefined} />

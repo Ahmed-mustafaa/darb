@@ -2,7 +2,7 @@ import { getLocale, getT } from '@/lib/i18n';
 import { requireCrew } from '@/lib/crew';
 import { loadTrip } from '@/lib/trips';
 import { displayPhone } from '@/lib/phone';
-import { otpTestMode } from '@/lib/whatsapp';
+import { testTools } from '@/lib/flags';
 import { Plate } from '@/components/ui';
 import { ConfirmButton } from '@/components/client';
 import { AutoRefresh, ShareLocation } from '@/components/live-client';
@@ -68,7 +68,7 @@ export default async function CrewHome() {
         active
         nextStop={next?.home ?? null}
         lastKnown={lastKnown}
-        testMode={otpTestMode()}
+        testMode={testTools()}
         labels={{
           sharing: t('c_sharing'),
           notSharing: t('c_notSharing'),

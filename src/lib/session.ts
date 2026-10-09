@@ -1,8 +1,7 @@
-import { createHmac, createHash, randomInt, timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
 
 const PARENT_COOKIE = 'darb_parent';
-const PENDING_COOKIE = 'darb_pending';
 
 function secret() {
   const s = (process.env.SESSION_SECRET ?? '').trim();
@@ -69,28 +68,3 @@ export function setStaffSession(s: StaffSession) {
 export function clearStaffSession() {
   cookies().delete(STAFF_COOKIE);
 }
-
-// ───── Details typed before the code is verified ─────
-export type Pending = {
-  phone: string;
-  name?: string;
-  relation?: string;
-  second_name?: string;
-  second_phone?: string;
-  mode: 'register' | 'signin' | 'staff';
-  testCode?: string; // only in OTP test mode, shown on the code screen
-};
-export function getPending(): Pending | null {
-  return verify<Pending>(cookies().get(PENDING_COOKIE)?.value);
-}
-export function setPending(p: Pending) {
-  cookies().set(PENDING_COOKIE, sign({ ...p, exp: Date.now() + 20 * 60e3 }), cookieOpts(20 * 60));
-}
-export function clearPending() {
-  cookies().delete(PENDING_COOKIE);
-}
-
-// ───── One-time codes ─────
-export const newCode = () => String(randomInt(0, 10000)).padStart(4, '0');
-export const hashCode = (phone: string, code: string) =>
-  createHash('sha256').update(`${phone}:${code}:${secret()}`).digest('hex');

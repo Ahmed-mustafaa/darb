@@ -10,7 +10,7 @@ Web app (works on any phone or computer, no app store), Arabic by default with a
 | Phase | What | Status |
 |---|---|---|
 | 1 | Database, admin login, buses, drivers & supervisors, children, bus suggestions, prices, schools | ✅ |
-| 2 | Parent registration: WhatsApp code (test mode until WhatsApp is approved), home pin on a map, children, packages | ✅ |
+| 2 | Parent registration: mobile + password, home pin on a map, children, packages | ✅ |
 | 3 | InstaPay payments: owner's QR at checkout, parent sends reference + screenshot, admin confirms and the bus is assigned | ✅ |
 | 4 | Crew app for drivers & supervisors, live bus map for parents and admin, "you're next" + 10-minute alerts | ✅ |
 
@@ -31,6 +31,7 @@ node -v   # should print v20 or newer
 4. New query again, paste `supabase/migrations/0002_instapay.sql`, press **Run**. This adds InstaPay payments and the storage for QR codes and receipts.
 5. New query again, paste `supabase/migrations/0003_parent_signin.sql`, press **Run**. This adds parent sign-in codes.
 6. New query again, paste `supabase/migrations/0004_trips_tracking.sql`, press **Run**. This adds trips, live tracking and parent alerts.
+7. New query again, paste `supabase/migrations/0005_passwords_push.sql`, press **Run**. This adds passwords and phone notifications.
 
 ### 3. Connect the app to Supabase
 In the project folder, copy the example settings file:
@@ -42,7 +43,8 @@ Open `.env.local` and fill in:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → Project Settings → **API Keys** → `anon public` (Legacy API keys tab)
 - `SUPABASE_SERVICE_ROLE_KEY` → same page → `service_role` (secret: never share it or put it anywhere else)
 - `SESSION_SECRET` → run `openssl rand -hex 32` in the terminal and paste the result
-- `OTP_TEST_MODE=true` → shows the parent sign-in code on screen until WhatsApp is set up
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` → run `npx web-push generate-vapid-keys` (after `npm install`) and paste the two keys; `VAPID_SUBJECT=mailto:` + your email
+- `SHOW_TEST_TOOLS=true` → shows the crew app's "simulate driving" button for testing
 
 Never commit `.env.local` (it is already in `.gitignore`).
 
@@ -67,7 +69,8 @@ If anything fails, copy the full error from the terminal or browser and send it 
 ## Put it online (Vercel)
 1. Sign up at https://vercel.com **with your GitHub account** → **Add New → Project** → import `darb`.
 2. Open **Environment Variables** and add the same five names and values as in your `.env.local`
-   (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `OTP_TEST_MODE`).
+   (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`,
+   `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and `SHOW_TEST_TOOLS` while testing).
 3. **Deploy**. After a minute or two you get a link like `darb-xxxx.vercel.app` that works on any phone.
    The servers run in Frankfurt (set in `vercel.json`), next to your Supabase database.
 4. Every time new code is pushed to GitHub, Vercel updates the site by itself.
@@ -77,7 +80,7 @@ If anything fails, copy the full error from the terminal or browser and send it 
    Upload your InstaPay QR and add your InstaPay address / payment link, then save.
 2. **Admin → Buses:** give at least one bus that school, so a bus can be assigned.
 3. On your phone, open the site → **Register your children**:
-   name + your number → the code appears on screen (test mode) → place the pin → add 1 child → choose **Monthly** (5 EGP).
+   name + your number + a password → place the pin → add 1 child → choose **Monthly** (5 EGP).
 4. On the payment screen, pay **5 EGP** with InstaPay (scan the QR or tap *Open InstaPay*), writing the payment code in the note.
    Then type the InstaPay reference, attach the screenshot and press **Send receipt**.
 5. **Admin → Payments:** the transfer appears with the screenshot. Check your InstaPay app and press **Confirm payment**.
@@ -110,7 +113,7 @@ InstaPay doesn't tell the app automatically when a transfer arrives to a persona
 ## Trips, live tracking and alerts
 
 **Crew app** (`/crew`): drivers and supervisors sign in with the mobile number saved in *Drivers & supervisors*
-(same WhatsApp code as parents). Either of them can start the trip and share the bus location.
+and the password you set for them there. Either of them can start the trip and share the bus location.
 - **Start morning trip / Start afternoon trip.** All children whose family has paid are put in order:
   morning starts at the home farthest from school and always goes to the nearest next one; afternoon starts at school.
 - **Location:** the phone sends its GPS position every ~8 s while the screen is on. Keep the page open and the phone
@@ -123,15 +126,16 @@ InstaPay doesn't tell the app automatically when a transfer arrives to a persona
 - **You're next:** when the stop before theirs is marked done (or the trip starts and they are first).
 - **10 minutes away:** estimated from the bus position (straight-line distance × 1.35 at 20 km/h), as a safety net.
 - Also: picked up, absent, dropped off, arrived at school.
-- Today they appear in the parent's app (pop-up + vibration while the page is open) and under *Messages*.
-  Once WhatsApp is set up they are also sent on WhatsApp (templates `darb_bus_next` with {{1}} = bus number and
-  `darb_bus_10min` with {{1}} = bus number, {{2}} = minutes).
+- They appear in the parent's app (pop-up + vibration while it is open, and under *Messages*) and, once the parent taps
+  **Turn on notifications**, as **phone notifications even when the app is closed**.
+  Android (Chrome): works straight away. iPhone (iOS 16.4+): the parent must first *Share → Add to Home Screen* and open
+  Darb from the home screen, then turn notifications on. Notifications need the site online over https (Vercel).
 
 **Parents** see the bus on a map with minutes away and how many stops are before them, on their status page.
 **Admin → Live map** shows every bus, its last position, speed, stops done and next stop. Click a bus to see its stops.
 
 ### Test it without driving
-With `OTP_TEST_MODE=true`, the crew screen has **Test: simulate driving to the next stop**: the bus moves toward the
+With `SHOW_TEST_TOOLS=true`, the crew screen has **Test: simulate driving to the next stop**: the bus moves toward the
 next stop by itself (about 150 m every 3 s). Mark the child picked up, and simulate again to the next stop.
 1. *Drivers & supervisors*: add yourself as a **supervisor** with your own mobile number and put yourself on the bus your test child rides.
 2. Open `/crew` (from the home page: *Driver or supervisor? Sign in*), sign in, **Start morning trip**.
@@ -147,7 +151,9 @@ supabase/migrations/0003_parent_signin.sql   parent sign-in codes
 src/app/admin/login                 admin sign-in
 src/app/admin/(panel)/...           overview, buses, children, staff, payments, settings
 src/app/(parent)/...                parent registration, sign-in, payment, status page
-src/lib/whatsapp.ts                 WhatsApp sign-in codes and bus alerts (Meta Cloud API) + test mode
+src/lib/password.ts                 password hashing (scrypt) and sign-in attempt limits
+src/lib/push.ts                     phone notifications (web push)
+public/sw.js                        service worker that shows the notifications
 src/lib/trips.ts                    trip start/end, stop order, arrival estimates, alerts
 src/app/(parent)/crew               crew app for drivers & supervisors
 src/app/admin/(panel)/live          admin live map
@@ -157,9 +163,12 @@ src/lib/pricing.ts                  package prices and discounts
 src/lib/phone.ts                    Egyptian phone numbers
 ```
 
-## Accounts to prepare for the next phases
-- **WhatsApp Business (Meta Cloud API)** – needs Meta business verification and an approved **Authentication** template
-  (name it `darb_login_code`, one code parameter, "Copy code" button). Then add `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`
-  and set `OTP_TEST_MODE=false`. **Turn test mode off before real parents use the app**: in test mode anyone can sign in
-  as any number because the code is shown on screen.
+## Before going live
 - **InstaPay QR code** – from your InstaPay app: Manage accounts → your account → QR code. Upload it on the Prices & schools page.
+
+## Sign-in and passwords
+- **Parents** create their account with their mobile number and a password (step 1 of registration).
+  Families you added yourself from paper records claim their account by registering with the same number.
+- **Drivers and supervisors** sign in at `/crew` with the mobile number and password you set in *Drivers & supervisors*.
+- **Forgotten passwords:** *Admin → Families* (parents) or *Drivers & supervisors* (crew): type a new password, save, tell them.
+- After 8 wrong passwords in 15 minutes, that number is blocked for 15 minutes.

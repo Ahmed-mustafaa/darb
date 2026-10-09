@@ -3,143 +3,85 @@
 import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normalizeEgPhone } from '@/lib/phone';
-import { getLocale } from '@/lib/i18n';
 import { quote, type PlanId } from '@/lib/pricing';
-import { sendLoginCode } from '@/lib/whatsapp';
-import {
-  clearParentSession,
-  clearPending,
-  getParentSession,
-  getPending,
-  hashCode,
-  newCode,
-  setParentSession,
-  setPending,
-  setStaffSession,
-  type Pending,
-} from '@/lib/session';
+import { MIN_PASSWORD, checkPassword, hashPassword, recordAttempt, tooManyAttempts } from '@/lib/password';
+import { clearParentSession, getParentSession, setParentSession, setStaffSession } from '@/lib/session';
 import { isLocked, loadSettings, nextStep, requireFamily } from '@/lib/parent';
 
-const s = (f: FormData, k: string) => String(f.get(k) ?? '').trim();
+const s = (f: FormData, k: string) => String(f.get(k) ?? '');
+const t = (f: FormData, k: string) => s(f, k).trim();
 
-/** Creates a code, sends it and remembers the details until the code is confirmed. */
-async function sendCode(pending: Pending, errorPath: string) {
-  const db = createAdminClient();
-  const since = new Date(Date.now() - 60 * 60e3).toISOString();
-  const { count } = await db.from('otp_codes').select('id', { count: 'exact', head: true }).eq('phone', pending.phone).gte('created_at', since);
-  if ((count ?? 0) >= 5) redirect(`${errorPath}?error=toomany`);
-
-  const code = newCode();
-  await db.from('otp_codes').insert({
-    phone: pending.phone,
-    code_hash: hashCode(pending.phone, code),
-    expires_at: new Date(Date.now() + 10 * 60e3).toISOString(),
-  });
-
-  let testCode: string | undefined;
-  try {
-    const r = await sendLoginCode(pending.phone, code, getLocale());
-    if (!r.sent) testCode = r.testCode;
-  } catch (e) {
-    redirect(`${errorPath}?error=${(e as Error).message === 'WHATSAPP_NOT_CONFIGURED' ? 'wa_config' : 'wa_failed'}`);
-  }
-  setPending({ ...pending, testCode });
-  redirect('/register/verify');
-}
-
-export async function startRegister(f: FormData) {
-  const phone = normalizeEgPhone(s(f, 'phone'));
-  const name = s(f, 'name');
-  const secondPhoneRaw = s(f, 'second_phone');
-  const secondPhone = secondPhoneRaw ? normalizeEgPhone(secondPhoneRaw) : null;
+/** Step 1: a new family creates its account with a mobile number and a password. */
+export async function registerParent(f: FormData) {
+  const phone = normalizeEgPhone(t(f, 'phone'));
+  const name = t(f, 'name');
+  const password = s(f, 'password');
+  const secondRaw = t(f, 'second_phone');
+  const second = secondRaw ? normalizeEgPhone(secondRaw) : null;
   if (name.length < 3) redirect('/register?error=name');
   if (!phone) redirect('/register?error=phone');
-  if (secondPhoneRaw && !secondPhone) redirect('/register?error=phone2');
-  const relation = ['mother', 'father', 'guardian'].includes(s(f, 'relation')) ? s(f, 'relation') : 'mother';
-  await sendCode(
-    { mode: 'register', phone, name, relation, second_name: s(f, 'second_name') || undefined, second_phone: secondPhone ?? undefined },
-    '/register',
-  );
-}
+  if (secondRaw && !second) redirect('/register?error=phone2');
+  if (password.length < MIN_PASSWORD) redirect('/register?error=pwshort');
+  if (password !== s(f, 'password2')) redirect('/register?error=pwmatch');
 
-export async function startSignin(f: FormData) {
-  const phone = normalizeEgPhone(s(f, 'phone'));
-  if (!phone) redirect('/signin?error=phone');
-  const { data } = await createAdminClient().from('parents').select('id').eq('phone', phone).maybeSingle();
-  if (!data) redirect('/signin?error=noaccount');
-  await sendCode({ mode: 'signin', phone }, '/signin');
-}
-
-/** Drivers and supervisors sign in with the mobile number the admin saved for them. */
-export async function startStaffSignin(f: FormData) {
-  const phone = normalizeEgPhone(s(f, 'phone'));
-  if (!phone) redirect('/crew/signin?error=phone');
-  const { data } = await createAdminClient().from('staff').select('id').eq('phone', phone).eq('active', true).maybeSingle();
-  if (!data) redirect('/crew/signin?error=nostaff');
-  await sendCode({ mode: 'staff', phone }, '/crew/signin');
-}
-
-export async function resendCode() {
-  const pending = getPending();
-  if (!pending) redirect('/register?error=session');
-  await sendCode(pending, '/register/verify');
-}
-
-export async function verifyCode(f: FormData) {
-  const pending = getPending();
-  if (!pending) redirect('/register?error=session');
-  const code = s(f, 'code').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g, '');
   const db = createAdminClient();
+  const { data: existing } = await db.from('parents').select('id, password_hash').eq('phone', phone).maybeSingle();
+  if (existing?.password_hash) redirect('/register?error=exists');
 
-  const { data: otp } = await db
-    .from('otp_codes')
-    .select('id, code_hash, attempts, expires_at, used_at')
-    .eq('phone', pending.phone)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!otp || otp.used_at || new Date(otp.expires_at) < new Date()) redirect('/register/verify?error=expired');
-  if (otp.attempts >= 5) redirect('/register/verify?error=toomany');
-  if (otp.code_hash !== hashCode(pending.phone, code)) {
-    await db.from('otp_codes').update({ attempts: otp.attempts + 1 }).eq('id', otp.id);
-    redirect('/register/verify?error=wrong');
+  const relation = ['mother', 'father', 'guardian'].includes(t(f, 'relation')) ? t(f, 'relation') : 'mother';
+  const row = {
+    full_name: name,
+    phone,
+    relation,
+    second_name: t(f, 'second_name') || null,
+    second_phone: second,
+    password_hash: await hashPassword(password),
+  };
+  let id: string;
+  if (existing) {
+    // A family the office added from paper records: they claim it by choosing a password.
+    await db.from('parents').update({ ...row, full_name: name }).eq('id', existing.id);
+    id = existing.id;
+  } else {
+    const { data, error } = await db.from('parents').insert(row).select('id').single();
+    if (error || !data) redirect(`/register?error=${error?.code === '23505' ? 'exists' : 'generic'}`);
+    id = data.id;
   }
-  await db.from('otp_codes').update({ used_at: new Date().toISOString() }).eq('id', otp.id);
-
-  // Driver or supervisor signing in to the crew app
-  if (pending.mode === 'staff') {
-    const { data: staff } = await db.from('staff').select('id').eq('phone', pending.phone).eq('active', true).maybeSingle();
-    if (!staff) redirect('/crew/signin?error=nostaff');
-    setStaffSession({ sid: staff.id, phone: pending.phone });
-    clearPending();
-    redirect('/crew');
-  }
-
-  // Find or create the parent
-  let { data: parent } = await db.from('parents').select('id').eq('phone', pending.phone).maybeSingle();
-  if (!parent) {
-    if (pending.mode === 'signin') redirect('/signin?error=noaccount');
-    const { data, error } = await db
-      .from('parents')
-      .insert({
-        full_name: pending.name,
-        phone: pending.phone,
-        relation: pending.relation,
-        second_name: pending.second_name ?? null,
-        second_phone: pending.second_phone ?? null,
-      })
-      .select('id')
-      .single();
-    if (error || !data) redirect('/register?error=generic');
-    parent = data;
-  } else if (pending.mode === 'register' && pending.second_phone) {
-    await db.from('parents').update({ second_name: pending.second_name ?? null, second_phone: pending.second_phone }).eq('id', parent.id);
-  }
-
-  setParentSession({ pid: parent.id, phone: pending.phone });
-  clearPending();
-  // The start page sends a signed-in parent on to their next step (the new cookie is read on that request).
+  setParentSession({ pid: id, phone });
   redirect('/register');
+}
+
+export async function signInParent(f: FormData) {
+  const phone = normalizeEgPhone(t(f, 'phone'));
+  if (!phone) redirect('/signin?error=phone');
+  const db = createAdminClient();
+  if (await tooManyAttempts(db, phone)) redirect('/signin?error=toomany');
+  const { data: parent } = await db.from('parents').select('id, password_hash').eq('phone', phone).maybeSingle();
+  if (parent && !parent.password_hash) redirect('/signin?error=nopassword');
+  const ok = !!parent && (await checkPassword(s(f, 'password'), parent.password_hash));
+  await recordAttempt(db, phone, ok);
+  if (!ok || !parent) redirect('/signin?error=wrong');
+  setParentSession({ pid: parent.id, phone });
+  redirect('/register');
+}
+
+/** Drivers and supervisors sign in with the mobile number and password the office set for them. */
+export async function signInStaff(f: FormData) {
+  const phone = normalizeEgPhone(t(f, 'phone'));
+  if (!phone) redirect('/crew/signin?error=phone');
+  const db = createAdminClient();
+  if (await tooManyAttempts(db, phone)) redirect('/crew/signin?error=toomany');
+  const { data: staff } = await db.from('staff').select('id, password_hash, active').eq('phone', phone).maybeSingle();
+  if (!staff || !staff.active) {
+    await recordAttempt(db, phone, false);
+    redirect('/crew/signin?error=nostaff');
+  }
+  if (!staff.password_hash) redirect('/crew/signin?error=nopassword');
+  const ok = await checkPassword(s(f, 'password'), staff.password_hash);
+  await recordAttempt(db, phone, ok);
+  if (!ok) redirect('/crew/signin?error=wrong');
+  setStaffSession({ sid: staff.id, phone });
+  redirect('/crew');
 }
 
 export async function saveLocation(f: FormData) {
@@ -151,7 +93,7 @@ export async function saveLocation(f: FormData) {
   if (!(lat > 22 && lat < 32 && lng > 24 && lng < 37)) redirect('/register/location?error=loc');
   await createAdminClient()
     .from('parents')
-    .update({ home_lat: lat, home_lng: lng, address: s(f, 'address') || null, landmark: s(f, 'landmark') || null })
+    .update({ home_lat: lat, home_lng: lng, address: t(f, 'address') || null, landmark: t(f, 'landmark') || null })
     .eq('id', fam.parent.id);
   redirect('/register/children');
 }
@@ -162,10 +104,10 @@ export async function saveChildren(f: FormData) {
   const count = Math.min(6, Math.max(1, Number(f.get('count')) || 1));
   const kids = Array.from({ length: count }, (_, i) => ({
     parent_id: fam.parent.id,
-    full_name: s(f, `name_${i}`),
-    school_id: s(f, `school_${i}`) || null,
-    grade: s(f, `grade_${i}`) || null,
-    notes: s(f, `notes_${i}`) || null,
+    full_name: t(f, `name_${i}`),
+    school_id: t(f, `school_${i}`) || null,
+    grade: t(f, `grade_${i}`) || null,
+    notes: t(f, `notes_${i}`) || null,
   }));
   if (kids.some((k) => k.full_name.length < 2 || !k.school_id || !k.grade)) redirect('/register/children?error=kids');
 
@@ -180,7 +122,7 @@ export async function choosePackage(f: FormData) {
   const fam = await requireFamily();
   if (isLocked(fam)) redirect('/parent');
   if (!fam.children.length) redirect('/register/children');
-  const plan = (['month', 'term', 'year'].includes(s(f, 'plan')) ? s(f, 'plan') : 'term') as PlanId;
+  const plan = (['month', 'term', 'year'].includes(t(f, 'plan')) ? t(f, 'plan') : 'term') as PlanId;
   const { prices } = await loadSettings();
   const q = quote(prices, fam.children.length, plan, fam.parent.is_returning);
   const row = { plan, children_count: fam.children.length, amount: q.total, status: 'awaiting_payment', method: 'instapay', reject_reason: null };
@@ -201,7 +143,7 @@ export async function submitReceipt(f: FormData) {
   const fam = await requireFamily();
   const pay = fam.payment;
   if (!pay || !(pay.status === 'awaiting_payment' || pay.status === 'rejected')) redirect('/parent');
-  const reference = s(f, 'reference');
+  const reference = t(f, 'reference');
   if (reference.length < 4 || reference.length > 60) redirect('/register/pay?error=ref');
   const file = f.get('screenshot');
   if (!(file instanceof File) || file.size === 0 || file.size > 5 * 1024 * 1024 || !IMAGE_TYPES[file.type]) {
@@ -217,7 +159,7 @@ export async function submitReceipt(f: FormData) {
     .from('payments')
     .update({
       reference,
-      payer_name: s(f, 'payer_name') || null,
+      payer_name: t(f, 'payer_name') || null,
       proof_path: path,
       status: 'awaiting_review',
       submitted_at: new Date().toISOString(),

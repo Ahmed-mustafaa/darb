@@ -15,7 +15,7 @@ export default async function Children({ searchParams }: { searchParams: { error
   const { data: schools } = await createAdminClient().from('schools').select('id, name_ar, name_en').order('name_en');
   return (
     <form className="stack" action={saveChildren}>
-      <StepHead step={4} t={t} backHref="/register/location" />
+      <StepHead step={3} t={t} backHref="/register/location" />
       <h1>{t('p_kidsTitle')}</h1>
       <Notice error={searchParams.error === 'kids' ? t('p_kidsRequired') : searchParams.error ? t('errorGeneric') : undefined} />
       <ChildrenFields

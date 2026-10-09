@@ -3,11 +3,16 @@ import { getLocale, getT, schoolName } from '@/lib/i18n';
 import { loadAll, seatsUsed } from '@/lib/data';
 import { Plate, SeatBar } from '@/components/ui';
 import { displayPhone } from '@/lib/phone';
+import { createClient } from '@/lib/supabase/server';
 
 export default async function Overview() {
   const locale = getLocale();
   const t = getT(locale);
   const { buses, children, staff, schools } = await loadAll();
+  const { count: toReview } = await createClient()
+    .from('payments')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'awaiting_review');
   const used = seatsUsed(children);
   const capacity = buses.reduce((a, b) => a + b.capacity, 0);
   const assigned = children.filter((c) => c.bus_id).length;
@@ -30,6 +35,10 @@ export default async function Overview() {
           <span className="k">{t('kpi_unassigned')}</span>
           <span className="v">{unassigned}</span>
           <span className="small muted">{unassigned ? t('reviewSuggestions') : t('everyoneAssigned')}</span>
+        </Link>
+        <Link className={toReview ? 'kpi warn' : 'kpi'} href="/admin/payments">
+          <span className="k">{t('reviewQueue')}</span>
+          <span className="v">{toReview ?? 0}</span>
         </Link>
         <div className="kpi"><span className="k">{t('kpi_staff')}</span><span className="v">{drivers}<small> · {sups}</small></span></div>
       </section>

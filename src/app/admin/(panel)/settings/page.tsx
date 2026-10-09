@@ -4,9 +4,18 @@ import { egp, quote, type PlanId, type Settings } from '@/lib/pricing';
 import { Notice } from '@/components/ui';
 import { ConfirmButton } from '@/components/client';
 import type { School } from '@/lib/data';
-import { addSchool, deleteSchool, savePrices } from './actions';
+import { addSchool, deleteSchool, saveInstapay, savePrices } from './actions';
 
-const ERRORS: Record<string, Key> = { name: 'nameRequired', coords: 'badCoordinates', inuse: 'inUse', generic: 'errorGeneric' };
+const ERRORS: Record<string, Key> = {
+  name: 'nameRequired',
+  coords: 'badCoordinates',
+  inuse: 'inUse',
+  link: 'badLink',
+  image: 'badImage',
+  upload: 'uploadFailed',
+  generic: 'errorGeneric',
+};
+type Instapay = { instapay_name: string | null; instapay_address: string | null; instapay_mobile: string | null; instapay_link: string | null; instapay_qr_path: string | null };
 const DEFAULTS: Settings = { monthly_price: 1500, sibling_discount: 15, returning_discount: 5, term_months: 4, term_discount: 5, year_months: 9, year_discount: 10 };
 
 export default async function SettingsPage({ searchParams }: { searchParams: { ok?: string; error?: string } }) {
@@ -18,6 +27,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: { o
     supabase.from('schools').select('*').order('name_en'),
   ]);
   const settings: Settings = { ...DEFAULTS, ...(s ?? {}) };
+  const ip = (s ?? {}) as Partial<Instapay>;
+  const qrUrl = ip.instapay_qr_path ? supabase.storage.from('instapay').getPublicUrl(ip.instapay_qr_path).data.publicUrl : null;
   const schools = (schoolRows ?? []) as School[];
   const plans: { id: PlanId; label: Key }[] = [
     { id: 'month', label: 'plan_month' },
@@ -70,6 +81,36 @@ export default async function SettingsPage({ searchParams }: { searchParams: { o
           </div>
         </section>
       </div>
+
+      <form className="panel" id="instapay" action={saveInstapay}>
+        <div className="panel-h"><h2>{t('instapay')}</h2><span className="small muted">{t('instapayHelp')}</span></div>
+        <div className="panel-b" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 20 }}>
+          <div className="form-grid" style={{ flex: '1 1 320px', minWidth: 0 }}>
+            <div className="field"><label htmlFor="ip-name">{t('instapayName')}</label><input className="input" id="ip-name" name="instapay_name" defaultValue={ip.instapay_name ?? ''} /></div>
+            <div className="field"><label htmlFor="ip-addr">{t('instapayAddress')}</label><input className="input mono" id="ip-addr" name="instapay_address" defaultValue={ip.instapay_address ?? ''} placeholder="darb@instapay" dir="ltr" /></div>
+            <div className="field"><label htmlFor="ip-mob">{t('instapayMobile')}</label><input className="input mono" id="ip-mob" name="instapay_mobile" defaultValue={ip.instapay_mobile ?? ''} inputMode="tel" dir="ltr" /></div>
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="ip-link">{t('instapayLink')}</label>
+              <input className="input mono" id="ip-link" name="instapay_link" defaultValue={ip.instapay_link ?? ''} placeholder="https://ipn.eg/S/…" dir="ltr" />
+              <span className="help">{t('instapayLinkHelp')}</span>
+            </div>
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="ip-qr">{t('qrImage')}</label>
+              <input className="input" id="ip-qr" name="qr" type="file" accept="image/png,image/jpeg,image/webp" />
+              <span className="help">{t('qrHelp')}</span>
+            </div>
+            <button className="btn btn-teal" type="submit" style={{ justifySelf: 'start' }}>{t('save')}</button>
+          </div>
+          <div style={{ width: 180, display: 'grid', gap: 6, justifyItems: 'center' }}>
+            {qrUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qrUrl} alt={t('qrImage')} width={180} height={180} style={{ objectFit: 'contain', borderRadius: 10, border: '1px solid var(--line)', background: '#fff' }} />
+            ) : (
+              <p className="notice bad small">{t('noQr')}</p>
+            )}
+          </div>
+        </div>
+      </form>
 
       <section className="panel">
         <div className="panel-h"><h2>{t('schools')}</h2></div>

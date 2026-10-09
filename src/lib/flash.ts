@@ -1,17 +1,14 @@
-import { cookies } from 'next/headers';
 import type { FlashKey } from '@/lib/i18n-flash';
 
 /**
- * Queues a short pop-up message for the next page the user sees.
- * Read and cleared by <FlashToast/> in the browser.
+ * Adds a confirmation message to a redirect URL: /parent → /parent?done=receiptSent.
+ * <ResultAlert/> shows it as an alert over a dimmed screen, then removes it from the address bar.
  */
-export function flash(key: FlashKey, params: Record<string, string | number> = {}) {
-  // base64url keeps the cookie value safe whatever the text (Arabic names, quotes, commas)
-  const value = Buffer.from(JSON.stringify({ k: key, p: params, t: Date.now() })).toString('base64url');
-  cookies().set('darb_flash', value, {
-    path: '/',
-    maxAge: 60,
-    sameSite: 'lax',
-    httpOnly: false, // the toast reads it in the browser
-  });
+export function done(url: string, key: FlashKey, params: Record<string, string | number> = {}) {
+  const [path, hash] = url.split('#');
+  const u = new URL(path, 'http://local');
+  u.searchParams.delete('ok');
+  u.searchParams.set('done', key);
+  for (const [k, v] of Object.entries(params)) u.searchParams.set('d_' + k, String(v));
+  return u.pathname + u.search + (hash ? '#' + hash : '');
 }

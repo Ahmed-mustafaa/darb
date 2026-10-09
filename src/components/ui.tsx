@@ -1,5 +1,6 @@
-import Link from 'next/link';
-import type { Locale } from '@/lib/i18n';
+import { getLocale, type Locale } from '@/lib/i18n';
+import { LangSwitchButton } from './lang-client';
+import { ErrorAlert } from './alert-client';
 
 export function BrandMark() {
   return (
@@ -11,12 +12,9 @@ export function BrandMark() {
   );
 }
 
-export function LangSwitch({ locale, next }: { locale: Locale; next: string }) {
-  return (
-    <Link className="btn btn-sm" href={`/lang?to=${locale === 'ar' ? 'en' : 'ar'}&next=${encodeURIComponent(next)}`}>
-      {locale === 'ar' ? 'English' : 'العربية'}
-    </Link>
-  );
+/** Language button. A real button (not a link) so the browser never "pre-opens" it and flips the language. */
+export function LangSwitch({ locale }: { locale: Locale; next?: string }) {
+  return <LangSwitchButton locale={locale} />;
 }
 
 const toArabicDigits = (s: string) => s.replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
@@ -34,11 +32,17 @@ export function Plate({ letters, number }: { letters: string | null; number: str
   );
 }
 
+/** Errors: an alert over a dimmed screen, plus the same text on the page. Success messages come from <ResultAlert/>. */
 export function Notice({ ok, error }: { ok?: string; error?: string }) {
-  // Success is shown by the pop-up (FlashToast); only errors stay on the page.
   void ok;
-  if (error) return <p className="notice bad" role="alert">{error}</p>;
-  return null;
+  if (!error) return null;
+  const ar = getLocale() === 'ar';
+  return (
+    <>
+      <p className="notice bad" role="alert">{error}</p>
+      <ErrorAlert text={error} title={ar ? 'تعذر إتمام العملية' : 'That didn’t work'} ok={ar ? 'حسنًا' : 'OK'} />
+    </>
+  );
 }
 
 export function SeatBar({ used, capacity }: { used: number; capacity: number }) {

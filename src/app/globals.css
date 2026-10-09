@@ -197,14 +197,20 @@ td .sub { display: block; font-size: 12.5px; color: var(--muted); }
 .livegrid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 900px) { .livegrid { grid-template-columns: minmax(0, 1fr); } }
 
-/* ───────── pop-up after actions ───────── */
-.flash { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 160%); z-index: 2000;
-  display: flex; align-items: center; gap: 10px; max-width: min(92vw, 460px); background: var(--ink); color: var(--bg);
-  padding: 12px 16px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); font-weight: 600; font-size: 14.5px;
-  transition: transform .3s cubic-bezier(.2,.8,.2,1); pointer-events: none; }
-.flash.show { transform: translate(-50%, 0); pointer-events: auto; cursor: pointer; }
-.flash-ic { width: 24px; height: 24px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: 13px; flex: none; }
-@media (prefers-reduced-motion: reduce) { .flash { transition: none; } }
+/* ───────── alert over a dimmed screen ───────── */
+.modal-backdrop { position: fixed; inset: 0; z-index: 3000; background: rgba(10, 16, 14, 0.55); display: grid; place-items: center;
+  padding: 24px 16px; animation: fade-in .18s ease-out; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+.modal { width: 100%; max-width: 380px; background: var(--surface); color: var(--ink); border-radius: 20px; padding: 26px 22px 20px;
+  display: grid; gap: 10px; justify-items: center; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.35); animation: pop-in .22s cubic-bezier(.2,.9,.3,1.2); }
+.modal h2 { font-size: 20px; }
+.modal p { color: var(--muted); font-size: 15px; overflow-wrap: anywhere; }
+.modal .btn { margin-top: 8px; }
+.modal-ic { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; font-weight: 800; color: #fff; }
+.modal.success .modal-ic { background: var(--ok); }
+.modal.error .modal-ic { background: var(--bad); }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop-in { from { transform: scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .modal-backdrop, .modal { animation: none; } }
 
 /* ───────── parent home ───────── */
 .row-between { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }

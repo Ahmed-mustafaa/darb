@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { flash } from '@/lib/flash';
+import { done } from '@/lib/flash';
 
 const str = (f: FormData, k: string) => {
   const v = String(f.get(k) ?? '').trim();
@@ -23,8 +23,7 @@ export async function addBus(f: FormData) {
   });
   if (error) redirect(`/admin/buses?error=${error.code === '23505' ? 'duplicate' : 'generic'}`);
   revalidatePath('/admin', 'layout');
-  flash('busAdded', { n: number });
-  redirect('/admin/buses?ok=1');
+  redirect(done('/admin/buses?ok=1', 'busAdded', { n: number }));
 }
 
 export async function updateBus(f: FormData) {
@@ -51,8 +50,7 @@ export async function updateBus(f: FormData) {
     .eq('id', id);
   if (error) redirect('/admin/buses?error=generic');
   revalidatePath('/admin', 'layout');
-  flash('busSaved');
-  redirect('/admin/buses?ok=1');
+  redirect(done('/admin/buses?ok=1', 'busSaved'));
 }
 
 export async function deleteBus(f: FormData) {
@@ -60,6 +58,5 @@ export async function deleteBus(f: FormData) {
   const { error } = await supabase.from('buses').delete().eq('id', String(f.get('id')));
   if (error) redirect('/admin/buses?error=generic');
   revalidatePath('/admin', 'layout');
-  flash('busDeleted');
-  redirect('/admin/buses?ok=1');
+  redirect(done('/admin/buses?ok=1', 'busDeleted'));
 }

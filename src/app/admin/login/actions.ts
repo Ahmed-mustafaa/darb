@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { flash } from '@/lib/flash';
+import { done } from '@/lib/flash';
 
 export async function signIn(formData: FormData) {
   const supabase = createClient();
@@ -14,13 +14,11 @@ export async function signIn(formData: FormData) {
     // Pass Supabase's own message along so problems other than a wrong password are visible.
     redirect(`/admin/login?error=1&detail=${encodeURIComponent(error.message).slice(0, 300)}`);
   }
-  flash('welcomeBack');
-  redirect('/admin');
+  redirect(done('/admin', 'welcomeBack'));
 }
 
 export async function signOut() {
   const supabase = createClient();
   await supabase.auth.signOut();
-  flash('signedOut');
-  redirect('/admin/login');
+  redirect(done('/admin/login', 'signedOut'));
 }

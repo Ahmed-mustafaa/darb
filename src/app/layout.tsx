@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { getLocale } from '@/lib/i18n';
 import { flashMessages } from '@/lib/i18n-flash';
-import { FlashToast } from '@/components/flash-client';
+import { Suspense } from 'react';
+import { ResultAlert } from '@/components/alert-client';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -29,7 +30,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
-        <FlashToast messages={flashMessages(locale)} />
+        <Suspense fallback={null}>
+          <ResultAlert messages={flashMessages(locale)} title={locale === 'ar' ? 'تم بنجاح' : 'Done'} ok={locale === 'ar' ? 'حسنًا' : 'OK'} />
+        </Suspense>
       </body>
     </html>
   );

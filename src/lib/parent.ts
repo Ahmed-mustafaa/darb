@@ -55,6 +55,14 @@ export const DEFAULT_SETTINGS: Settings = {
 export async function requireFamily(): Promise<Family> {
   const session = getParentSession();
   if (!session) redirect('/register');
+  const fam = await loadFamily(session.pid);
+  if (!fam) redirect('/register?error=session');
+  return fam;
+}
+
+/** Loads a family by parent id (used right after sign-in, before the new cookie is readable). */
+export async function loadFamily(pid: string): Promise<Family | null> {
+  const session = { pid };
   const db = createAdminClient();
   const [{ data: parent }, { data: children }, { data: payments }] = await Promise.all([
     db.from('parents').select('*').eq('id', session.pid).maybeSingle(),
@@ -66,7 +74,7 @@ export async function requireFamily(): Promise<Family> {
       .order('created_at', { ascending: false })
       .limit(24),
   ]);
-  if (!parent) redirect('/register?error=session');
+  if (!parent) return null;
   const history = (payments ?? []) as NonNullable<Family['payment']>[];
   const today = todayCairo();
   const paid = history.filter((p) => p.status === 'paid' && p.kind !== 'addon').sort((a, b) => (b.valid_until ?? '').localeCompare(a.valid_until ?? ''));

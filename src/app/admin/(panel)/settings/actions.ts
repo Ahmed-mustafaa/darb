@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { parseLatLng } from '@/lib/geo';
-import { flash } from '@/lib/flash';
+import { done } from '@/lib/flash';
 
 const pct = (v: FormDataEntryValue | null) => Math.min(80, Math.max(0, Number(v) || 0));
 
@@ -23,8 +23,7 @@ export async function savePrices(f: FormData) {
   });
   if (error) redirect('/admin/settings?error=generic');
   revalidatePath('/admin/settings');
-  flash('pricesSaved');
-  redirect('/admin/settings?ok=1');
+  redirect(done('/admin/settings?ok=1', 'pricesSaved'));
 }
 
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -58,8 +57,7 @@ export async function saveInstapay(f: FormData) {
   const { error } = await supabase.from('settings').update({ ...update, updated_at: new Date().toISOString() }).eq('id', 1);
   if (error) redirect('/admin/settings?error=generic#instapay');
   revalidatePath('/admin/settings');
-  flash('instapaySaved');
-  redirect('/admin/settings?ok=1#instapay');
+  redirect(done('/admin/settings?ok=1#instapay', 'instapaySaved'));
 }
 
 export async function addSchool(f: FormData) {
@@ -73,8 +71,7 @@ export async function addSchool(f: FormData) {
   const { error } = await supabase.from('schools').insert({ name_ar, name_en, lat: loc?.lat ?? null, lng: loc?.lng ?? null });
   if (error) redirect('/admin/settings?error=generic');
   revalidatePath('/admin', 'layout');
-  flash('schoolAdded');
-  redirect('/admin/settings?ok=1');
+  redirect(done('/admin/settings?ok=1', 'schoolAdded'));
 }
 
 export async function deleteSchool(f: FormData) {
@@ -87,6 +84,5 @@ export async function deleteSchool(f: FormData) {
   if ((b ?? 0) + (c ?? 0) > 0) redirect('/admin/settings?error=inuse');
   await supabase.from('schools').delete().eq('id', id);
   revalidatePath('/admin', 'layout');
-  flash('schoolDeleted');
-  redirect('/admin/settings?ok=1');
+  redirect(done('/admin/settings?ok=1', 'schoolDeleted'));
 }

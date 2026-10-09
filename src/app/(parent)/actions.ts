@@ -6,8 +6,8 @@ import { normalizeEgPhone } from '@/lib/phone';
 import { addonQuote, quote, type PlanId } from '@/lib/pricing';
 import { MIN_PASSWORD, checkPassword, hashPassword, recordAttempt, tooManyAttempts } from '@/lib/password';
 import { clearParentSession, getParentSession, setParentSession, setStaffSession } from '@/lib/session';
-import { canRenew, isLocked, loadSettings, nextStep, requireFamily } from '@/lib/parent';
-import { flash } from '@/lib/flash';
+import { canRenew, isLocked, loadFamily, loadSettings, nextStep, requireFamily } from '@/lib/parent';
+import { done } from '@/lib/flash';
 import { todayCairo } from '@/lib/subscription';
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? '');
@@ -50,8 +50,8 @@ export async function registerParent(f: FormData) {
     id = data.id;
   }
   setParentSession({ pid: id, phone });
-  flash('accountCreated');
-  redirect('/register');
+  const fam = await loadFamily(id);
+  redirect(done(fam ? nextStep(fam) : '/register/location', 'accountCreated'));
 }
 
 export async function signInParent(f: FormData) {
@@ -65,8 +65,8 @@ export async function signInParent(f: FormData) {
   await recordAttempt(db, phone, ok);
   if (!ok || !parent) redirect('/signin?error=wrong');
   setParentSession({ pid: parent.id, phone });
-  flash('welcomeBack');
-  redirect('/register');
+  const fam = await loadFamily(parent.id);
+  redirect(done(fam ? nextStep(fam) : '/parent', 'welcomeBack'));
 }
 
 /** Drivers and supervisors sign in with the mobile number and password the office set for them. */
@@ -85,8 +85,7 @@ export async function signInStaff(f: FormData) {
   await recordAttempt(db, phone, ok);
   if (!ok) redirect('/crew/signin?error=wrong');
   setStaffSession({ sid: staff.id, phone });
-  flash('welcomeBack');
-  redirect('/crew');
+  redirect(done('/crew', 'welcomeBack'));
 }
 
 export async function saveLocation(f: FormData) {
@@ -100,8 +99,7 @@ export async function saveLocation(f: FormData) {
     .from('parents')
     .update({ home_lat: lat, home_lng: lng, address: t(f, 'address') || null, landmark: t(f, 'landmark') || null })
     .eq('id', fam.parent.id);
-  flash('locationSaved');
-  redirect('/register/children');
+  redirect(done('/register/children', 'locationSaved'));
 }
 
 export async function saveChildren(f: FormData) {
@@ -121,8 +119,7 @@ export async function saveChildren(f: FormData) {
   await db.from('children').delete().eq('parent_id', fam.parent.id);
   const { error } = await db.from('children').insert(kids);
   if (error) redirect('/register/children?error=generic');
-  flash('childrenSaved', { n: count });
-  redirect('/register/package');
+  redirect(done('/register/package', 'childrenSaved', { n: count }));
 }
 
 export async function choosePackage(f: FormData) {
@@ -147,8 +144,7 @@ export async function choosePackage(f: FormData) {
     const { error } = await db.from('payments').insert({ ...row, parent_id: fam.parent.id });
     if (error) redirect('/register/package?error=generic');
   }
-  flash('packageChosen');
-  redirect('/register/pay');
+  redirect(done('/register/pay', 'packageChosen'));
 }
 
 /** Adds children to a running subscription. They ride once their (pro-rated) payment is confirmed. */
@@ -195,8 +191,7 @@ export async function addChildMidterm(f: FormData) {
     await db.from('children').delete().in('id', added.map((k) => k.id));
     redirect('/parent/add-child?error=generic');
   }
-  flash('childAddedPending', { n: added.length });
-  redirect('/register/pay');
+  redirect(done('/register/pay', 'childAddedPending', { n: added.length }));
 }
 
 const IMAGE_TYPES: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/heic': 'heic' };
@@ -233,14 +228,12 @@ export async function submitReceipt(f: FormData) {
     await db.storage.from('payment-proofs').remove([path]);
     redirect(`/register/pay?error=${error.code === '23505' ? 'refused' : 'generic'}`);
   }
-  flash('receiptSent');
-  redirect('/parent');
+  redirect(done('/parent', 'receiptSent'));
 }
 
 export async function parentSignOut() {
   clearParentSession();
-  flash('signedOut');
-  redirect('/');
+  redirect(done('/', 'signedOut'));
 }
 
 /** Used by the start pages: an already signed-in parent continues where they left off. */

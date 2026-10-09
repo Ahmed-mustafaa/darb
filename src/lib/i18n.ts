@@ -1,9 +1,10 @@
 import { cookies } from 'next/headers';
+import { PARENT } from './i18n-parent';
 
 export type Locale = 'ar' | 'en';
 
 // [English, Arabic]
-const D = {
+const BASE = {
   brand: ['Darb', 'درب'],
   tagline: ['School transport, tracked live', 'مواصلات مدرسية بمتابعة مباشرة'],
   switchLang: ['العربية', 'English'],
@@ -202,6 +203,7 @@ const D = {
   landingAdmin: ['Admin sign in', 'دخول الإدارة'],
 } as const;
 
+const D = { ...BASE, ...PARENT };
 export type Key = keyof typeof D;
 
 export function getLocale(): Locale {

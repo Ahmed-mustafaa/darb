@@ -13,11 +13,10 @@ export default function Home() {
           <LangSwitch locale={locale} next="/" />
         </div>
         <h1>{t('tagline')}</h1>
-        <div className="panel panel-b">
-          <strong>{t('landingParents')}</strong>
-          <p className="muted">{t('landingParentsSoon')}</p>
-        </div>
-        <Link className="btn btn-primary" href="/admin">{t('landingAdmin')}</Link>
+        <p className="lead">{t('p_startLead')}</p>
+        <Link className="btn btn-primary btn-block" href="/register">{t('landingParents')}</Link>
+        <Link className="btn btn-block" href="/signin">{t('landingSignin')}</Link>
+        <Link className="btn btn-ghost small" href="/admin" style={{ justifySelf: 'center' }}>{t('landingAdmin')}</Link>
       </div>
     </main>
   );

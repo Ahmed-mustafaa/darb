@@ -3,21 +3,26 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { autoAssignFamily } from '@/lib/assign';
 
 const REASONS = ['not_received', 'wrong_amount', 'unreadable', 'duplicate'];
 
 export async function confirmPayment(f: FormData) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('payments')
     .update({ status: 'paid', paid_at: new Date().toISOString(), reviewed_by: user?.id ?? null, reviewed_at: new Date().toISOString(), reject_reason: null })
     .eq('id', String(f.get('id')))
-    .eq('status', 'awaiting_review');
+    .eq('status', 'awaiting_review')
+    .select('parent_id')
+    .maybeSingle();
   if (error) redirect('/admin/payments?error=generic');
-  // Phase 2: send the parent a WhatsApp confirmation here.
+  // Put the family's children on the best bus straight away; the admin can still move them.
+  const assigned = data?.parent_id ? await autoAssignFamily(supabase, data.parent_id) : 0;
+  // Later: send the parent a WhatsApp confirmation here.
   revalidatePath('/admin', 'layout');
-  redirect('/admin/payments?ok=confirmed');
+  redirect(`/admin/payments?ok=confirmed&assigned=${assigned}`);
 }
 
 export async function rejectPayment(f: FormData) {

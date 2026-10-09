@@ -27,7 +27,7 @@ const ERRORS: Record<string, Key> = { duplicate: 'duplicateReference', amount: '
 const OK: Record<string, Key> = { confirmed: 'paymentConfirmed', rejected: 'paymentRejected' };
 const STATUS_CLASS: Record<Payment['status'], string> = { awaiting_payment: '', awaiting_review: 'warn', paid: 'ok', rejected: '', refunded: 'teal' };
 
-export default async function PaymentsPage({ searchParams }: { searchParams: { ok?: string; error?: string } }) {
+export default async function PaymentsPage({ searchParams }: { searchParams: { ok?: string; error?: string; assigned?: string } }) {
   const locale = getLocale();
   const t = getT(locale);
   const supabase = createClient();
@@ -57,7 +57,16 @@ export default async function PaymentsPage({ searchParams }: { searchParams: { o
     <>
       <div className="page-head"><h1>{t('payments')}</h1></div>
       <Notice
-        ok={searchParams.ok ? t(OK[searchParams.ok] ?? 'saved') : undefined}
+        ok={
+          searchParams.ok
+            ? t(OK[searchParams.ok] ?? 'saved') +
+              (searchParams.ok === 'confirmed' && Number(searchParams.assigned) > 0
+                ? locale === 'ar'
+                  ? ` · تم تسكين ${searchParams.assigned} طفل على أتوبيس تلقائيًا`
+                  : ` · ${searchParams.assigned} child(ren) placed on a bus automatically`
+                : '')
+            : undefined
+        }
         error={searchParams.error ? t(ERRORS[searchParams.error] ?? 'errorGeneric') : undefined}
       />
 

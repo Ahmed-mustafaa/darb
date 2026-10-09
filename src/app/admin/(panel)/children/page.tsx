@@ -13,7 +13,7 @@ const ERRORS: Record<string, Key> = { full: 'busFull', name: 'nameRequired', pho
 export default async function ChildrenPage({ searchParams }: { searchParams: SP }) {
   const locale = getLocale();
   const t = getT(locale);
-  const { children, buses, parents, schools } = await loadAll();
+  const { children, buses, parents, schools, paidParents } = await loadAll();
   const used = seatsUsed(children);
   const parentOf = (id: string) => parents.find((p) => p.id === id);
   const homeOf = (parentId: string): LatLng | null => {
@@ -145,7 +145,8 @@ export default async function ChildrenPage({ searchParams }: { searchParams: SP 
                     </td>
                     <td>{schoolName(schools.find((s) => s.id === c.school_id), locale)}</td>
                     <td>
-                      {p?.full_name}
+                      {p?.full_name}{' '}
+                      <span className={paidParents.has(c.parent_id) ? 'chip ok' : 'chip'}>{paidParents.has(c.parent_id) ? t('p_paid') : t('p_notPaid')}</span>
                       <span className="sub mono">{displayPhone(p?.phone)}</span>
                       {!homeOf(c.parent_id) && <span className="sub" style={{ color: 'var(--warn)' }}>{t('noPin')}</span>}
                     </td>

@@ -9,9 +9,9 @@ Web app (works on any phone or computer, no app store), Arabic by default with a
 
 | Phase | What | Status |
 |---|---|---|
-| 1 | Database, admin login, buses, drivers & supervisors, children, bus suggestions, prices, schools | ✅ This version |
-| 2 | Parent registration: WhatsApp code, home pin on a map, children, packages | Next |
-| 3 | InstaPay payments: owner's QR at checkout, parent sends reference + screenshot, admin confirms | 🟡 Admin side done · parent screen comes with Phase 2 |
+| 1 | Database, admin login, buses, drivers & supervisors, children, bus suggestions, prices, schools | ✅ |
+| 2 | Parent registration: WhatsApp code (test mode until WhatsApp is approved), home pin on a map, children, packages | ✅ |
+| 3 | InstaPay payments: owner's QR at checkout, parent sends reference + screenshot, admin confirms and the bus is assigned | ✅ |
 | 4 | Supervisor app, live bus map, WhatsApp alerts (stop before yours / 10 min away) | |
 
 ---
@@ -29,15 +29,19 @@ node -v   # should print v20 or newer
 2. Open **SQL Editor → New query**, paste everything from `supabase/migrations/0001_init.sql`, press **Run**.
 3. New query again, paste `supabase/seed.sql`, press **Run**. This adds 3 example schools, default prices and 6 empty buses.
 4. New query again, paste `supabase/migrations/0002_instapay.sql`, press **Run**. This adds InstaPay payments and the storage for QR codes and receipts.
+5. New query again, paste `supabase/migrations/0003_parent_signin.sql`, press **Run**. This adds parent sign-in codes.
 
 ### 3. Connect the app to Supabase
 In the project folder, copy the example settings file:
 ```bash
 cp .env.example .env.local
 ```
-Open `.env.local` and fill in both values from Supabase → **Project Settings → API**:
-- `NEXT_PUBLIC_SUPABASE_URL` → "Project URL"
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` → "anon public" key
+Open `.env.local` and fill in:
+- `NEXT_PUBLIC_SUPABASE_URL` → Supabase → Project Settings → **Data API** → Project URL (only `https://xxxx.supabase.co`)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` → Project Settings → **API Keys** → `anon public` (Legacy API keys tab)
+- `SUPABASE_SERVICE_ROLE_KEY` → same page → `service_role` (secret: never share it or put it anywhere else)
+- `SESSION_SECRET` → run `openssl rand -hex 32` in the terminal and paste the result
+- `OTP_TEST_MODE=true` → shows the parent sign-in code on screen until WhatsApp is set up
 
 Never commit `.env.local` (it is already in `.gitignore`).
 
@@ -60,9 +64,25 @@ If anything fails, copy the full error from the terminal or browser and send it 
 ---
 
 ## Put it online (Vercel)
-1. Sign up at https://vercel.com with your GitHub account → **Add New → Project** → import `darb`.
-2. Under **Environment Variables**, add the same two values from `.env.local`.
-3. **Deploy**. You get a link like `darb.vercel.app` that works on any phone.
+1. Sign up at https://vercel.com **with your GitHub account** → **Add New → Project** → import `darb`.
+2. Open **Environment Variables** and add the same five names and values as in your `.env.local`
+   (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `OTP_TEST_MODE`).
+3. **Deploy**. After a minute or two you get a link like `darb-xxxx.vercel.app` that works on any phone.
+   The servers run in Frankfurt (set in `vercel.json`), next to your Supabase database.
+4. Every time new code is pushed to GitHub, Vercel updates the site by itself.
+
+## Test the whole flow with a 5 EGP payment
+1. **Admin → Prices & schools:** add your real school(s). Set *Monthly price per child* to **5** and save.
+   Upload your InstaPay QR and add your InstaPay address / payment link, then save.
+2. **Admin → Buses:** give at least one bus that school, so a bus can be assigned.
+3. On your phone, open the site → **Register your children**:
+   name + your number → the code appears on screen (test mode) → place the pin → add 1 child → choose **Monthly** (5 EGP).
+4. On the payment screen, pay **5 EGP** with InstaPay (scan the QR or tap *Open InstaPay*), writing the payment code in the note.
+   Then type the InstaPay reference, attach the screenshot and press **Send receipt**.
+5. **Admin → Payments:** the transfer appears with the screenshot. Check your InstaPay app and press **Confirm payment**.
+   The child is placed on the closest bus automatically.
+6. Back on the phone, refresh: the status shows *You're registered* with the bus and supervisor.
+7. Put the real monthly price back afterwards.
 
 ---
 
@@ -90,8 +110,12 @@ InstaPay doesn't tell the app automatically when a transfer arrives to a persona
 ```
 supabase/migrations/0001_init.sql   tables, security rules, capacity rule
 supabase/seed.sql                   starter schools, prices, 6 buses
+supabase/migrations/0002_instapay.sql   InstaPay payments + storage
+supabase/migrations/0003_parent_signin.sql   parent sign-in codes
 src/app/admin/login                 admin sign-in
-src/app/admin/(panel)/...           overview, buses, children, staff, settings
+src/app/admin/(panel)/...           overview, buses, children, staff, payments, settings
+src/app/(parent)/...                parent registration, sign-in, payment, status page
+src/lib/whatsapp.ts                 WhatsApp sign-in codes (Meta Cloud API) + test mode
 src/lib/i18n.ts                     all Arabic & English text
 src/lib/geo.ts                      distances and bus suggestions
 src/lib/pricing.ts                  package prices and discounts
@@ -99,5 +123,8 @@ src/lib/phone.ts                    Egyptian phone numbers
 ```
 
 ## Accounts to prepare for the next phases
-- **WhatsApp Business (Meta Cloud API)** – needs Meta business verification and approved message templates. Start early; approval can take days.
+- **WhatsApp Business (Meta Cloud API)** – needs Meta business verification and an approved **Authentication** template
+  (name it `darb_login_code`, one code parameter, "Copy code" button). Then add `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`
+  and set `OTP_TEST_MODE=false`. **Turn test mode off before real parents use the app**: in test mode anyone can sign in
+  as any number because the code is shown on screen.
 - **InstaPay QR code** – from your InstaPay app: Manage accounts → your account → QR code. Upload it on the Prices & schools page.

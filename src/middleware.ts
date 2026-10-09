@@ -1,13 +1,17 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { supabaseEnv } from '@/lib/supabase/env';
 
 /** Keeps the Supabase session fresh and sends signed-out visitors of /admin to the login page. */
 export async function middleware(request: NextRequest) {
+  // Lets pages know their own path (used by the language switch).
+  request.headers.set('x-pathname', request.nextUrl.pathname);
   let response = NextResponse.next({ request });
 
+  const { url, key } = supabaseEnv();
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    key,
     {
       cookies: {
         getAll() {

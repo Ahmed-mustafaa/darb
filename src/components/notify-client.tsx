@@ -19,10 +19,13 @@ export function NotifyButton({
   labels,
 }: {
   vapidKey: string | null;
-  labels: { turnOn: string; on: string; lead: string; blocked: string; ios: string; unsupported: string; test: string };
+  labels: {
+    turnOn: string; on: string; lead: string; blocked: string; ios: string; unsupported: string; test: string;
+    testSent: string; errNotConfigured: string; errNoSubscription: string; errSendFailed: string; errSignin: string; errOffline: string;
+  };
 }) {
   const [state, setState] = useState<State>('checking');
-  const [sent, setSent] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -67,9 +70,22 @@ export function NotifyButton({
   };
 
   const test = async () => {
-    await fetch('/api/push/test', { method: 'POST' }).catch(() => null);
-    setSent(true);
-    setTimeout(() => setSent(false), 4000);
+    setResult(null);
+    try {
+      const res = await fetch('/api/push/test', { method: 'POST' });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) return setResult({ ok: true, text: labels.testSent });
+      const why: Record<string, string> = {
+        not_configured: labels.errNotConfigured,
+        no_subscription: labels.errNoSubscription,
+        send_failed: labels.errSendFailed,
+        signin: labels.errSignin,
+      };
+      setResult({ ok: false, text: `${why[body.error] ?? labels.errSendFailed}${body.detail ? ` (${body.detail})` : ''}` });
+      if (body.error === 'no_subscription') setState('off');
+    } catch {
+      setResult({ ok: false, text: labels.errOffline });
+    }
   };
 
   if (state === 'checking') return null;
@@ -78,7 +94,8 @@ export function NotifyButton({
       {state === 'on' ? (
         <>
           <div className="share-live"><span className="live-dot" /><span>{labels.on}</span></div>
-          <button type="button" className="btn btn-sm" onClick={test} style={{ justifySelf: 'start' }}>{sent ? '✓' : labels.test}</button>
+          <button type="button" className="btn btn-sm" onClick={test} style={{ justifySelf: 'start' }}>{labels.test}</button>
+          {result && <p className={result.ok ? 'small' : 'notice bad small'} style={{ overflowWrap: 'anywhere' }}>{result.text}</p>}
         </>
       ) : (
         <>

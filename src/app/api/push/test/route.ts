@@ -10,6 +10,8 @@ export async function POST() {
   const session = getParentSession();
   if (!session) return NextResponse.json({ error: 'signin' }, { status: 401 });
   if (!pushReady()) return NextResponse.json({ error: 'not_configured' }, { status: 503 });
-  await pushToParent(createAdminClient(), session.pid, 'test', {});
-  return NextResponse.json({ ok: true });
+  const r = await pushToParent(createAdminClient(), session.pid, 'test', {});
+  if (r.phones === 0) return NextResponse.json({ error: 'no_subscription' }, { status: 404 });
+  if (r.sent === 0) return NextResponse.json({ error: 'send_failed', detail: r.failed.join(' | ') }, { status: 502 });
+  return NextResponse.json({ ok: true, sent: r.sent, phones: r.phones });
 }

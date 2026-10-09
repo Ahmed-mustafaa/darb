@@ -135,6 +135,12 @@ export default async function ParentHome() {
               ios: t('n_ios'),
               unsupported: t('n_unsupported'),
               test: t('n_test'),
+              testSent: t('n_testSent'),
+              errNotConfigured: t('n_errNotConfigured'),
+              errNoSubscription: t('n_errNoSubscription'),
+              errSendFailed: t('n_errSendFailed'),
+              errSignin: t('n_errSignin'),
+              errOffline: t('n_errOffline'),
             }}
           />
         </>

@@ -19,7 +19,7 @@ export default function Verify({ searchParams }: { searchParams: { error?: strin
   const pending = getPending();
   if (!pending) redirect('/register?error=session');
   const t = getT(getLocale());
-  const back = pending.mode === 'signin' ? '/signin' : '/register';
+  const back = pending.mode === 'signin' ? '/signin' : pending.mode === 'staff' ? '/crew/signin' : '/register';
   return (
     <div className="stack">
       {pending.mode === 'register' ? <StepHead step={2} t={t} backHref={back} /> : <a className="back" href={back}>{t('back')}</a>}

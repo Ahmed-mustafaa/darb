@@ -15,6 +15,7 @@ import {
   newCode,
   setParentSession,
   setPending,
+  setStaffSession,
   type Pending,
 } from '@/lib/session';
 import { isLocked, loadSettings, nextStep, requireFamily } from '@/lib/parent';
@@ -69,6 +70,15 @@ export async function startSignin(f: FormData) {
   await sendCode({ mode: 'signin', phone }, '/signin');
 }
 
+/** Drivers and supervisors sign in with the mobile number the admin saved for them. */
+export async function startStaffSignin(f: FormData) {
+  const phone = normalizeEgPhone(s(f, 'phone'));
+  if (!phone) redirect('/crew/signin?error=phone');
+  const { data } = await createAdminClient().from('staff').select('id').eq('phone', phone).eq('active', true).maybeSingle();
+  if (!data) redirect('/crew/signin?error=nostaff');
+  await sendCode({ mode: 'staff', phone }, '/crew/signin');
+}
+
 export async function resendCode() {
   const pending = getPending();
   if (!pending) redirect('/register?error=session');
@@ -95,6 +105,15 @@ export async function verifyCode(f: FormData) {
     redirect('/register/verify?error=wrong');
   }
   await db.from('otp_codes').update({ used_at: new Date().toISOString() }).eq('id', otp.id);
+
+  // Driver or supervisor signing in to the crew app
+  if (pending.mode === 'staff') {
+    const { data: staff } = await db.from('staff').select('id').eq('phone', pending.phone).eq('active', true).maybeSingle();
+    if (!staff) redirect('/crew/signin?error=nostaff');
+    setStaffSession({ sid: staff.id, phone: pending.phone });
+    clearPending();
+    redirect('/crew');
+  }
 
   // Find or create the parent
   let { data: parent } = await db.from('parents').select('id').eq('phone', pending.phone).maybeSingle();

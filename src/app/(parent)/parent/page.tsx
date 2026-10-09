@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { egp } from '@/lib/pricing';
 import { displayPhone } from '@/lib/phone';
 import { parentSignOut } from '../actions';
+import { ParentTracker } from '@/components/tracker-client';
 
 export default async function ParentHome() {
   const fam = await requireFamily();
@@ -72,7 +73,30 @@ export default async function ParentHome() {
         </section>
       )}
 
-      {paid && <p className="small muted">{t('p_trackingSoon')}</p>}
+      {paid && (
+        <ParentTracker
+          locale={locale}
+          labels={{
+            noTrip: t('t_noTrip'),
+            noTripLead: t('t_noTripLead'),
+            minAway: t('t_minAway'),
+            stopsBefore: t('t_stopsBefore'),
+            youreNext: t('t_youreNext'),
+            doneTrip: t('t_doneTrip'),
+            updated: t('t_updated'),
+            secAgo: t('t_secAgo'),
+            minAgo: t('t_minAgo'),
+            noSignal: t('t_noSignal'),
+            messages: t('t_messages'),
+            bus: t('bus'),
+            pickedUp: t('c_pickedUp'),
+            onBus: t('c_onBus'),
+            absent: t('c_absent'),
+            droppedOff: t('c_droppedOff'),
+            waiting: t('c_waiting'),
+          }}
+        />
+      )}
       <p className="small muted">{t('p_installHint')}</p>
       <form action={parentSignOut}><button className="btn btn-ghost" type="submit">{t('signOut')}</button></form>
     </div>

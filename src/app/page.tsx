@@ -16,7 +16,10 @@ export default function Home() {
         <p className="lead">{t('p_startLead')}</p>
         <Link className="btn btn-primary btn-block" href="/register">{t('landingParents')}</Link>
         <Link className="btn btn-block" href="/signin">{t('landingSignin')}</Link>
-        <Link className="btn btn-ghost small" href="/admin" style={{ justifySelf: 'center' }}>{t('landingAdmin')}</Link>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 4, flexWrap: 'wrap' }}>
+          <Link className="btn btn-ghost small" href="/crew">{t('landingCrew')}</Link>
+          <Link className="btn btn-ghost small" href="/admin">{t('landingAdmin')}</Link>
+        </div>
       </div>
     </main>
   );

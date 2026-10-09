@@ -33,10 +33,8 @@ const BASE = {
   reviewSuggestions: ['Review suggestions', 'راجع الاقتراحات'],
   everyoneAssigned: ['Everyone has a bus', 'كل الأطفال لهم أتوبيس'],
   fleet: ['Fleet', 'الأسطول'],
-  liveMapSoon: [
-    'The live map arrives in Phase 4, when supervisors start sharing their location.',
-    'الخريطة المباشرة تأتي في المرحلة ٤ عندما تبدأ المشرفات بمشاركة الموقع.',
-  ],
+  liveMapSoon: ['Open Live map to see buses moving during trips.', 'افتح الخريطة المباشرة لترى الأتوبيسات أثناء الرحلات.'],
+  landingCrew: ['Driver or supervisor? Sign in', 'سائق أو مشرفة؟ سجّل الدخول'],
   bus: ['Bus', 'أتوبيس'],
   plate: ['Plate', 'اللوحة'],
   plateLetters: ['Plate letters', 'حروف اللوحة'],

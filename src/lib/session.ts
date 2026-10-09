@@ -55,6 +55,21 @@ export function clearParentSession() {
   cookies().delete(PARENT_COOKIE);
 }
 
+// ───── Signed-in driver or supervisor ─────
+const STAFF_COOKIE = 'darb_crew';
+export type StaffSession = { sid: string; phone: string };
+
+export function getStaffSession(): StaffSession | null {
+  return verify<StaffSession>(cookies().get(STAFF_COOKIE)?.value);
+}
+export function setStaffSession(s: StaffSession) {
+  const days = 30;
+  cookies().set(STAFF_COOKIE, sign({ ...s, exp: Date.now() + days * 864e5 }), cookieOpts(days * 86400));
+}
+export function clearStaffSession() {
+  cookies().delete(STAFF_COOKIE);
+}
+
 // ───── Details typed before the code is verified ─────
 export type Pending = {
   phone: string;
@@ -62,7 +77,7 @@ export type Pending = {
   relation?: string;
   second_name?: string;
   second_phone?: string;
-  mode: 'register' | 'signin';
+  mode: 'register' | 'signin' | 'staff';
   testCode?: string; // only in OTP test mode, shown on the code screen
 };
 export function getPending(): Pending | null {

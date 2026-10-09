@@ -39,3 +39,14 @@ export function recommendPlan(children: number, returning: boolean): PlanId {
 
 export const egp = (n: number, locale: 'ar' | 'en') =>
   locale === 'ar' ? `${Math.round(n).toLocaleString('ar-EG')} ج.م` : `${Math.round(n).toLocaleString('en-US')} EGP`;
+
+/**
+ * Price of adding children to a running subscription: the monthly price for each remaining
+ * (started) month, with the sibling discount, since the family already has a child riding.
+ */
+export function addonQuote(s: Settings, children: number, daysLeft: number) {
+  const months = Math.max(1, Math.ceil(daysLeft / 30));
+  const perChild = Number(s.monthly_price) * months * (1 - Number(s.sibling_discount) / 100);
+  const total = Math.round((perChild * children) / 5) * 5;
+  return { months, perChild, total };
+}

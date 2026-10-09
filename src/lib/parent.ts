@@ -18,7 +18,7 @@ export type Family = {
     landmark: string | null;
     is_returning: boolean;
   };
-  children: { id: string; full_name: string; school_id: string | null; grade: string | null; notes: string | null; bus_id: string | null }[];
+  children: { id: string; full_name: string; school_id: string | null; grade: string | null; notes: string | null; bus_id: string | null; pending: boolean }[];
   payment: {
     id: string;
     code: string;
@@ -33,6 +33,8 @@ export type Family = {
     created_at: string;
     valid_from: string | null;
     valid_until: string | null;
+    kind: 'subscription' | 'addon';
+    child_ids: string[] | null;
   } | null;
   /** The paid payment covering today (or the most recent paid one), if any. */
   active: (NonNullable<Family['payment']> & { daysLeft: number; expired: boolean }) | null;
@@ -56,10 +58,10 @@ export async function requireFamily(): Promise<Family> {
   const db = createAdminClient();
   const [{ data: parent }, { data: children }, { data: payments }] = await Promise.all([
     db.from('parents').select('*').eq('id', session.pid).maybeSingle(),
-    db.from('children').select('id, full_name, school_id, grade, notes, bus_id').eq('parent_id', session.pid).order('created_at'),
+    db.from('children').select('id, full_name, school_id, grade, notes, bus_id, pending').eq('parent_id', session.pid).order('created_at'),
     db
       .from('payments')
-      .select('id, code, plan, children_count, amount, status, reject_reason, reference, paid_at, submitted_at, created_at, valid_from, valid_until')
+      .select('id, code, plan, children_count, amount, status, reject_reason, reference, paid_at, submitted_at, created_at, valid_from, valid_until, kind, child_ids')
       .eq('parent_id', session.pid)
       .order('created_at', { ascending: false })
       .limit(24),
@@ -67,7 +69,7 @@ export async function requireFamily(): Promise<Family> {
   if (!parent) redirect('/register?error=session');
   const history = (payments ?? []) as NonNullable<Family['payment']>[];
   const today = todayCairo();
-  const paid = history.filter((p) => p.status === 'paid').sort((a, b) => (b.valid_until ?? '').localeCompare(a.valid_until ?? ''));
+  const paid = history.filter((p) => p.status === 'paid' && p.kind !== 'addon').sort((a, b) => (b.valid_until ?? '').localeCompare(a.valid_until ?? ''));
   const current = paid.find((p) => p.valid_from && p.valid_from <= today && (p.valid_until ?? '9999') >= today) ?? paid[0] ?? null;
   const active = current
     ? { ...current, daysLeft: current.valid_until ? daysBetween(today, current.valid_until) + 1 : 0, expired: !!current.valid_until && current.valid_until < today }
@@ -86,11 +88,10 @@ export function nextStep(f: Family): string {
 
 /** Details can't change while a receipt is being checked or a paid subscription is running. */
 export const isLocked = (f: Family) =>
-  !!f.payment && (f.payment.status === 'awaiting_review' || (f.payment.status === 'paid' && !!f.active && !f.active.expired));
+  (!!f.payment && f.payment.status === 'awaiting_review') || (!!f.active && !f.active.expired);
 
 /** A family can choose a new package when the subscription has ended or ends within 14 days. */
-export const canRenew = (f: Family) =>
-  !!f.payment && f.payment.status === 'paid' && !!f.active && (f.active.expired || f.active.daysLeft <= 14);
+export const canRenew = (f: Family) => !!f.active && (f.active.expired || f.active.daysLeft <= 14);
 
 export async function loadSettings() {
   const db = createAdminClient();

@@ -103,7 +103,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: { o
                   </div>
                   <dl className="kv">
                     <dt>{t('parent')}</dt><dd>{parent?.full_name}<span className="mono small muted" style={{ display: 'block' }}>{displayPhone(parent?.phone)}</span></dd>
-                    <dt>{t('plan')}</dt><dd>{planLabel(p.plan)} · {p.children_count}</dd>
+                    <dt>{t('plan')}</dt><dd>{(p as any).kind === 'addon' ? t('a_addChild') : planLabel(p.plan)} · {p.children_count}</dd>
                     <dt>{t('reference')}</dt><dd className="mono">{p.reference ?? '—'}</dd>
                     <dt>{t('payerName')}</dt><dd>{p.payer_name ?? '—'}</dd>
                     <dt>{t('submittedAt')}</dt><dd>{when(p.submitted_at)}</dd>
@@ -153,7 +153,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: { o
                   <tr key={p.id}>
                     <td className="mono">{p.code}<span className="sub">{when(p.paid_at ?? p.submitted_at ?? p.created_at)}</span></td>
                     <td>{parent?.full_name}<span className="sub mono">{displayPhone(parent?.phone)}</span></td>
-                    <td>{planLabel(p.plan)} · {p.children_count}</td>
+                    <td>{(p as any).kind === 'addon' ? t('a_addChild') : planLabel(p.plan)} · {p.children_count}</td>
                     <td className="num" style={{ whiteSpace: 'nowrap' }}>{egp(p.amount, locale)}</td>
                     <td>{t(`method_${p.method}` as Key)}</td>
                     <td className="mono small">{p.reference ?? '—'}</td>

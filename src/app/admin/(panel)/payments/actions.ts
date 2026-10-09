@@ -22,8 +22,14 @@ export async function confirmPayment(f: FormData) {
   if (error) redirect('/admin/payments?error=generic');
   if (data?.parent_id) {
     // The subscription runs from today (or right after the current one ends) for the package's months.
-    const { data: pay } = await supabase.from('payments').select('id, plan').eq('id', String(f.get('id'))).maybeSingle();
-    if (pay) await supabase.from('payments').update(await periodFor(supabase, data.parent_id, pay.plan, pay.id)).eq('id', pay.id);
+    const { data: pay } = await supabase.from('payments').select('id, plan, kind, child_ids').eq('id', String(f.get('id'))).maybeSingle();
+    if (pay?.kind === 'addon') {
+      // Added children ride until the end date already on the payment
+      if (pay.child_ids?.length) await supabase.from('children').update({ pending: false }).in('id', pay.child_ids);
+    } else if (pay) {
+      await supabase.from('payments').update(await periodFor(supabase, data.parent_id, pay.plan, pay.id)).eq('id', pay.id);
+      await supabase.from('children').update({ pending: false }).eq('parent_id', data.parent_id);
+    }
   }
   // Put the family's children on the best bus straight away; the admin can still move them.
   const assigned = data?.parent_id ? await autoAssignFamily(supabase, data.parent_id) : 0;

@@ -115,40 +115,35 @@ export function LocationPicker({
 
 type Kid = { name: string; school: string; grade: string; notes: string };
 
+/** One card per child, with "Add another child" and "Remove". Posts name_0…, school_0…, count. */
 export function ChildrenFields({
   initial,
   schools,
   grades,
   labels,
+  max = 6,
 }: {
   initial: Kid[];
   schools: { id: string; name: string }[];
   grades: { value: string; label: string }[];
-  labels: { howMany: string; child: string; name: string; school: string; grade: string; notesPh: string };
+  labels: { child: string; name: string; school: string; grade: string; notesPh: string; addAnother: string; remove: string };
+  max?: number;
 }) {
-  const [kids, setKids] = useState<Kid[]>(initial.length ? initial : [{ name: '', school: '', grade: '', notes: '' }]);
+  const blank = (school = ''): Kid => ({ name: '', school, grade: '', notes: '' });
+  const [kids, setKids] = useState<Kid[]>(initial.length ? initial : [blank()]);
   const set = (i: number, k: keyof Kid, v: string) => setKids((all) => all.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
-  const resize = (n: number) =>
-    setKids((all) => {
-      const next = all.slice(0, n);
-      while (next.length < n) next.push({ name: '', school: all[0]?.school ?? '', grade: '', notes: '' });
-      return next;
-    });
+  const add = () => setKids((all) => (all.length >= max ? all : [...all, blank(all[all.length - 1]?.school ?? '')]));
+  const remove = (i: number) => setKids((all) => (all.length <= 1 ? all : all.filter((_, j) => j !== i)));
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <span className="label">{labels.howMany}</span>
-        <div className="stepper">
-          <button type="button" onClick={() => resize(Math.max(1, kids.length - 1))} aria-label="−">−</button>
-          <output className="num">{kids.length}</output>
-          <button type="button" onClick={() => resize(Math.min(6, kids.length + 1))} aria-label="+">+</button>
-        </div>
-      </div>
       <input type="hidden" name="count" value={kids.length} />
       {kids.map((k, i) => (
         <fieldset key={i} className="kidcard">
           <legend>{labels.child} {i + 1}</legend>
+          {kids.length > 1 && (
+            <button type="button" className="btn btn-sm btn-ghost btn-danger kid-remove" onClick={() => remove(i)}>{labels.remove}</button>
+          )}
           <div className="field">
             <label htmlFor={`name_${i}`}>{labels.name}</label>
             <input className="input" id={`name_${i}`} name={`name_${i}`} value={k.name} onChange={(e) => set(i, 'name', e.target.value)} required minLength={2} />
@@ -172,6 +167,9 @@ export function ChildrenFields({
           <input className="input" name={`notes_${i}`} value={k.notes} onChange={(e) => set(i, 'notes', e.target.value)} placeholder={labels.notesPh} aria-label={labels.notesPh} />
         </fieldset>
       ))}
+      {kids.length < max && (
+        <button type="button" className="btn btn-block add-kid" onClick={add}>＋ {labels.addAnother}</button>
+      )}
     </>
   );
 }

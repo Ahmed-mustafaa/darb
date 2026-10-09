@@ -69,10 +69,14 @@ export default async function ParentHome() {
             <div><span className="muted">{t('h_paidAmount')}</span><span className="num">{egp(active.amount, locale)} · <span className="mono small">{active.code}</span></span></div>
           </div>
           {!active.expired && active.daysLeft <= 14 && !renewalOpen && <p className="small" style={{ color: 'var(--warn)', fontWeight: 600 }}>{t('h_endsSoon')}</p>}
-          {canRenew(fam) && !renewalOpen && <Link className="btn btn-primary btn-block" href="/register/package">{t('h_renew')}</Link>}
+          {canRenew(fam) && (!renewalOpen || renewalOpen.kind === 'addon') && <Link className="btn btn-primary btn-block" href="/register/package">{t('h_renew')}</Link>}
           {renewalOpen && (
             <div className="row-between" style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>
-              <span className="small">{renewalOpen.status === 'awaiting_review' ? t('h_renewalReview') : t('h_renewalPending')}</span>
+              <span className="small">
+                {renewalOpen.kind === 'addon'
+                  ? `${t('a_addChild')}: ${renewalOpen.status === 'awaiting_review' ? t('p_statusReview') : t('a_pending')}`
+                  : renewalOpen.status === 'awaiting_review' ? t('h_renewalReview') : t('h_renewalPending')}
+              </span>
               {renewalOpen.status !== 'awaiting_review' && <Link className="btn btn-sm btn-primary" href="/register/pay">{t('h_finishPayment')}</Link>}
             </div>
           )}
@@ -141,7 +145,11 @@ export default async function ParentHome() {
         <section className="panel">
           <div className="panel-h">
             <h2>{t('p_kidsTitle')}</h2>
-            {!running && latest?.status !== 'awaiting_review' && <Link className="btn btn-sm" href="/register/children">{t('p_editKids')}</Link>}
+            {running ? (
+              <Link className="btn btn-sm btn-primary" href="/parent/add-child">＋ {t('a_addChild')}</Link>
+            ) : (
+              latest?.status !== 'awaiting_review' && <Link className="btn btn-sm" href="/register/children">{t('p_editKids')}</Link>
+            )}
           </div>
           <div className="panel-b">
             {fam.children.map((c) => {
@@ -154,7 +162,12 @@ export default async function ParentHome() {
                   </div>
                   <span className="small muted">{gradeLabel(c.grade, locale)} · {schoolName((schools ?? []).find((s) => s.id === c.school_id), locale)}</span>
                   {c.notes && <span className="small" style={{ color: 'var(--warn)' }}>{c.notes}</span>}
-                  {running &&
+                  {c.pending ? (
+                    <div className="row-between">
+                      <span className="chip warn">{t('a_pending')}</span>
+                      {latest?.kind === 'addon' && latest.status !== 'awaiting_review' && <Link className="btn btn-sm" href="/register/pay">{t('h_finishPayment')}</Link>}
+                    </div>
+                  ) : running &&
                     (bus ? (
                       <div className="lines small">
                         <div><span className="muted">{t('bus')}</span><strong>{bus.number}</strong></div>
@@ -199,7 +212,7 @@ export default async function ParentHome() {
             {fam.history.map((p) => (
               <div key={p.id} className="row-between small" style={{ borderBottom: '1px solid var(--line)', paddingBottom: 8 }}>
                 <span>
-                  <strong>{planName(p.plan)}</strong> · <span className="num">{egp(p.amount, locale)}</span>
+                  <strong>{p.kind === 'addon' ? t('a_addChild') : planName(p.plan)}</strong> · <span className="num">{egp(p.amount, locale)}</span>
                   <span className="muted" style={{ display: 'block' }}>
                     {p.valid_until ? `${formatDate(p.valid_from, locale)} → ${formatDate(p.valid_until, locale)}` : <span className="mono">{p.code}</span>}
                   </span>

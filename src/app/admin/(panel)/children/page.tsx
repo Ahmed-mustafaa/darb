@@ -146,7 +146,11 @@ export default async function ChildrenPage({ searchParams }: { searchParams: SP 
                     <td>{schoolName(schools.find((s) => s.id === c.school_id), locale)}</td>
                     <td>
                       {p?.full_name}{' '}
-                      <span className={paidParents.has(c.parent_id) ? 'chip ok' : 'chip'}>{paidParents.has(c.parent_id) ? t('p_paid') : t('p_notPaid')}</span>
+                      {c.pending ? (
+                        <span className="chip warn">{t('a_pending')}</span>
+                      ) : (
+                        <span className={paidParents.has(c.parent_id) ? 'chip ok' : 'chip'}>{paidParents.has(c.parent_id) ? t('p_paid') : t('p_notPaid')}</span>
+                      )}
                       <span className="sub mono">{displayPhone(p?.phone)}</span>
                       {!homeOf(c.parent_id) && <span className="sub" style={{ color: 'var(--warn)' }}>{t('noPin')}</span>}
                     </td>

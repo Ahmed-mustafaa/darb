@@ -24,14 +24,16 @@ export default async function Pay({ searchParams }: { searchParams: { error?: st
   const locale = getLocale();
   const t = getT(locale);
   const { instapay: ip } = await loadSettings();
+  const addonNames = pay.kind === 'addon' ? fam.children.filter((c) => pay.child_ids?.includes(c.id)).map((c) => c.full_name) : [];
   const ready = !!(ip.qrUrl || ip.link || ip.address);
   const copy = { label: t('p_copy'), done: t('p_copied') };
   const amountText = String(Math.round(pay.amount));
 
   return (
     <div className="stack">
-      <StepHead step={5} t={t} backHref="/register/package" />
+      {pay.kind === 'addon' ? <a className="back" href="/parent">{t('back')}</a> : <StepHead step={5} t={t} backHref="/register/package" />}
       <h1>{t('p_payTitle')}</h1>
+      {pay.kind === 'addon' && addonNames.length > 0 && <p className="lead">{t('a_payFor')}: <strong>{addonNames.join('، ')}</strong></p>}
       <Notice error={searchParams.error ? t(ERRORS[searchParams.error] ?? 'errorGeneric') : undefined} />
       {pay.status === 'rejected' && pay.reject_reason && (
         <p className="notice bad">{t('p_statusRejected')}: {t(`reason_${pay.reject_reason}` as Key)}</p>

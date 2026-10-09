@@ -15,7 +15,7 @@ export type Bus = {
   status: 'parked' | 'on_route' | 'at_school';
 };
 export type Parent = { id: string; full_name: string; phone: string; home_lat: number | null; home_lng: number | null; address: string | null };
-export type Child = { id: string; full_name: string; grade: string | null; notes: string | null; school_id: string | null; bus_id: string | null; parent_id: string; created_at: string };
+export type Child = { id: string; pending?: boolean; full_name: string; grade: string | null; notes: string | null; school_id: string | null; bus_id: string | null; parent_id: string; created_at: string };
 
 /** Everything the admin pages need, in one round trip per table. */
 export async function loadAll() {

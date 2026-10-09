@@ -33,6 +33,7 @@ node -v   # should print v20 or newer
 6. New query again, paste `supabase/migrations/0004_trips_tracking.sql`, press **Run**. This adds trips, live tracking and parent alerts.
 7. New query again, paste `supabase/migrations/0005_passwords_push.sql`, press **Run**. This adds passwords and phone notifications.
 8. New query again, paste `supabase/migrations/0006_subscription_dates.sql`, press **Run**. This adds subscription start and end dates.
+9. New query again, paste `supabase/migrations/0007_add_child_midterm.sql`, press **Run**. This lets families add a child during a subscription.
 
 ### 3. Connect the app to Supabase
 In the project folder, copy the example settings file:
@@ -183,3 +184,7 @@ After registering, parents land on their home page (`/parent`, also the home-scr
 - **Live tracking** and **phone notifications** while the subscription is running.
 - **Pick-up address** and **payment history**.
 Subscription dates are set when you confirm (or record) a payment.
+
+**Adding a child during a subscription:** *Add a child* on the home page. The price is the monthly price for each
+remaining (started) month until the current end date, with the sibling discount. The family pays with InstaPay as usual;
+the child shows *Waiting for payment* until you confirm it in *Payments*, then joins the closest bus and the trips.

@@ -105,8 +105,8 @@ export async function startTrip(db: DB, busId: string, kind: TripKind, staffId: 
 
   const [{ data: bus }, { data: kids }, { data: paid }] = await Promise.all([
     db.from('buses').select('id, number, school_id').eq('id', busId).single(),
-    db.from('children').select('id, parent_id').eq('bus_id', busId),
-    db.from('payments').select('parent_id, valid_until').eq('status', 'paid'),
+    db.from('children').select('id, parent_id').eq('bus_id', busId).eq('pending', false),
+    db.from('payments').select('parent_id, valid_until').eq('status', 'paid').eq('kind', 'subscription'),
   ]);
   const today = todayCairo();
   // Families whose subscription covers today (payments confirmed before dates existed have no end date)

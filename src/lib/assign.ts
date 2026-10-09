@@ -7,7 +7,7 @@ import { suggestBuses, type LatLng } from '@/lib/geo';
  */
 export async function autoAssignFamily(db: SupabaseClient<any, any, any>, parentId: string): Promise<number> {
   const [{ data: kids }, { data: buses }, { data: allKids }, { data: parents }, { data: schools }] = await Promise.all([
-    db.from('children').select('id, school_id, parent_id').eq('parent_id', parentId).is('bus_id', null),
+    db.from('children').select('id, school_id, parent_id').eq('parent_id', parentId).is('bus_id', null).eq('pending', false),
     db.from('buses').select('id, number, capacity, school_id'),
     db.from('children').select('bus_id, parent_id').not('bus_id', 'is', null),
     db.from('parents').select('id, home_lat, home_lng'),

@@ -31,6 +31,7 @@ export const FLASH = {
   schoolDeleted: ['School deleted', 'تم حذف المدرسة'],
   paymentConfirmed: ['Payment confirmed · {n} child(ren) placed on a bus', 'تم تأكيد الدفع · تم تسكين {n} طفل على أتوبيس'],
   paymentRejected: ['Payment rejected. The parent sees the reason.', 'تم رفض الدفع. سيرى ولي الأمر السبب.'],
+  childAddedPending: ['{n} child(ren) added. Pay to put them on the bus.', 'تمت إضافة {n} طفل. ادفع ليتم تسكينهم على الأتوبيس.'],
   paymentRecorded: ['Payment recorded as paid', 'تم تسجيل الدفعة كمدفوعة'],
 } as const;
 

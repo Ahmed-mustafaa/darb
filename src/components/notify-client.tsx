@@ -21,11 +21,18 @@ export function NotifyButton({
   vapidKey: string | null;
   labels: {
     turnOn: string; on: string; lead: string; blocked: string; ios: string; unsupported: string; test: string;
-    testSent: string; errNotConfigured: string; errNoSubscription: string; errSendFailed: string; errSignin: string; errOffline: string;
+    testSent: string; demo: string; demoWaiting: string; demoSent: string; errNotConfigured: string; errNoSubscription: string; errSendFailed: string; errSignin: string; errOffline: string;
   };
 }) {
   const [state, setState] = useState<State>('checking');
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [demoLeft, setDemoLeft] = useState(0);
+
+  useEffect(() => {
+    if (demoLeft <= 0) return;
+    const t = setTimeout(() => setDemoLeft((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [demoLeft]);
 
   useEffect(() => {
     (async () => {
@@ -69,12 +76,15 @@ export function NotifyButton({
     }
   };
 
-  const test = async () => {
+  const test = async (demo = false) => {
     setResult(null);
+    if (demo) setDemoLeft(50);
     try {
-      const res = await fetch('/api/push/test', { method: 'POST' });
+      // keepalive lets the request carry on after the app is closed
+      const res = await fetch(demo ? '/api/push/demo' : '/api/push/test', { method: 'POST', keepalive: demo });
       const body = await res.json().catch(() => ({}));
-      if (res.ok) return setResult({ ok: true, text: labels.testSent });
+      setDemoLeft(0);
+      if (res.ok) return setResult({ ok: true, text: demo ? labels.demoSent : labels.testSent });
       const why: Record<string, string> = {
         not_configured: labels.errNotConfigured,
         no_subscription: labels.errNoSubscription,
@@ -84,7 +94,9 @@ export function NotifyButton({
       setResult({ ok: false, text: `${why[body.error] ?? labels.errSendFailed}${body.detail ? ` (${body.detail})` : ''}` });
       if (body.error === 'no_subscription') setState('off');
     } catch {
-      setResult({ ok: false, text: labels.errOffline });
+      setDemoLeft(0);
+      // A demo request is cut off when the app is closed; the server still sends the alert.
+      setResult(demo ? null : { ok: false, text: labels.errOffline });
     }
   };
 
@@ -94,7 +106,11 @@ export function NotifyButton({
       {state === 'on' ? (
         <>
           <div className="share-live"><span className="live-dot" /><span>{labels.on}</span></div>
-          <button type="button" className="btn btn-sm" onClick={test} style={{ justifySelf: 'start' }}>{labels.test}</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-sm" onClick={() => test()} disabled={demoLeft > 0}>{labels.test}</button>
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => test(true)} disabled={demoLeft > 0}>{labels.demo}</button>
+          </div>
+          {demoLeft > 0 && <p className="notice small"><strong>{demoLeft}s</strong> · {labels.demoWaiting}</p>}
           {result && <p className={result.ok ? 'small' : 'notice bad small'} style={{ overflowWrap: 'anywhere' }}>{result.text}</p>}
         </>
       ) : (

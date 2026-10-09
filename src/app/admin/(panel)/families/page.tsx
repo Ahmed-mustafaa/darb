@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { displayPhone } from '@/lib/phone';
 import { Notice } from '@/components/ui';
 import { setParentPassword } from './actions';
+import { DemoPushButton } from '@/components/demo-push-client';
 
 export default async function FamiliesPage({ searchParams }: { searchParams: { ok?: string; error?: string; q?: string } }) {
   const locale = getLocale();
@@ -45,6 +46,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { o
                     <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <span className={paid ? 'chip ok' : 'chip'}>{paid ? t('p_paid') : t('p_notPaid')}</span>
                       {notif && <span className="chip teal">{t('notifOn')}</span>}
+                      {notif && <DemoPushButton parentId={p.id} labels={{ button: t('demoPush'), sent: t('demoPushSent'), failed: t('demoPushFailed') }} />}
                     </td>
                     <td>
                       <form action={setParentPassword} className="inline-form">

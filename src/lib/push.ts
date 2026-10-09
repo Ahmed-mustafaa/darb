@@ -49,3 +49,17 @@ export async function pushToParent(db: DB, parentId: string, kind: string, param
   );
   return { sent, failed, phones: subs.length };
 }
+
+/** Demo: a realistic "bus is 10 minutes away" alert, using the bus of the parent's first child. */
+export async function pushDemo(db: DB, parentId: string) {
+  const { data: kids } = await db.from('children').select('bus_id').eq('parent_id', parentId).not('bus_id', 'is', null).limit(1);
+  const busId = kids?.[0]?.bus_id;
+  const { data: bus } = busId ? await db.from('buses').select('number').eq('id', busId).maybeSingle() : { data: null };
+  return pushToParent(db, parentId, 'ten_min', { bus: bus?.number ?? 1, minutes: 10 });
+}
+
+/** Whether the parent has at least one phone registered for notifications. */
+export async function hasPhone(db: DB, parentId: string) {
+  const { count } = await db.from('push_subscriptions').select('id', { count: 'exact', head: true }).eq('parent_id', parentId);
+  return (count ?? 0) > 0;
+}

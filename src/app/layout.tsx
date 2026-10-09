@@ -3,6 +3,7 @@ import { getLocale } from '@/lib/i18n';
 import { flashMessages } from '@/lib/i18n-flash';
 import { Suspense } from 'react';
 import { ResultAlert } from '@/components/alert-client';
+import { VersionGuard } from '@/components/version-client';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -30,6 +31,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
+        <VersionGuard
+          labels={
+            locale === 'ar'
+              ? { title: 'يوجد إصدار جديد', text: 'تم تحديث درب. يجب التحديث للمتابعة.', button: 'تحديث الآن' }
+              : { title: 'New version available', text: 'Darb has been updated. Update to continue.', button: 'Update now' }
+          }
+        />
         <footer className="version" aria-label="App version">
           {locale === 'ar' ? 'الإصدار' : 'Version'} {process.env.NEXT_PUBLIC_APP_VERSION} · {process.env.NEXT_PUBLIC_BUILD_TIME}
         </footer>

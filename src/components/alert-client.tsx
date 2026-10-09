@@ -44,6 +44,7 @@ export function ResultAlert({ messages, title, ok }: { messages: Record<string, 
   const [text, setText] = useState<string | null>(null);
 
   useEffect(() => {
+    if (params.get('v')) stripParams((k) => k === 'v');
     const key = params.get('done');
     if (!key) return;
     const template = messages[key];

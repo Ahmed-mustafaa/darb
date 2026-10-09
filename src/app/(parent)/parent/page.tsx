@@ -9,6 +9,7 @@ import { Plate } from '@/components/ui';
 import { parentSignOut } from '../actions';
 import { ParentTracker } from '@/components/tracker-client';
 import { NotifyButton } from '@/components/notify-client';
+import { vapidPublicKey } from '@/lib/vapid';
 
 const STATUS_CHIP: Record<string, string> = { paid: 'chip ok', awaiting_review: 'chip warn', awaiting_payment: 'chip', rejected: 'chip warn', refunded: 'chip teal' };
 
@@ -126,7 +127,7 @@ export default async function ParentHome() {
             }}
           />
           <NotifyButton
-            vapidKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || null}
+            vapidKey={vapidPublicKey()}
             labels={{
               turnOn: t('n_turnOn'),
               on: t('n_on'),
@@ -140,6 +141,8 @@ export default async function ParentHome() {
               demoWaiting: t('n_demoWaiting'),
               demoSent: t('n_demoSent'),
               errNotConfigured: t('n_errNotConfigured'),
+              errKeysMismatch: t('n_errKeysMismatch'),
+              errResubscribe: t('n_errResubscribe'),
               errNoSubscription: t('n_errNoSubscription'),
               errSendFailed: t('n_errSendFailed'),
               errSignin: t('n_errSignin'),

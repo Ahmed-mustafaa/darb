@@ -1,6 +1,7 @@
 import * as webpush from 'web-push';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { notifText } from '@/lib/notify-text';
+import { vapidKeysMatch, vapidPrivateKey, vapidPublicKey, vapidSubject } from '@/lib/vapid';
 
 type DB = SupabaseClient<any, any, any>;
 
@@ -8,21 +9,29 @@ let configured: boolean | null = null;
 /** Phone notifications need VAPID keys (README: "Phone notifications"). Without them nothing is sent. */
 export function pushReady() {
   if (configured !== null) return configured;
-  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const priv = process.env.VAPID_PRIVATE_KEY;
+  const pub = vapidPublicKey();
+  const priv = vapidPrivateKey();
   if (!pub || !priv) return (configured = false);
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@darb.app', pub, priv);
+  webpush.setVapidDetails(vapidSubject(), pub, priv);
   return (configured = true);
+}
+
+/** What's wrong with the server's notification setup, if anything. */
+export function pushProblem(): 'not_configured' | 'keys_mismatch' | null {
+  if (!pushReady()) return 'not_configured';
+  if (!vapidKeysMatch()) return 'keys_mismatch';
+  return null;
 }
 
 const TITLE = { ar: 'درب', en: 'Darb' };
 
 /** Sends a notification to every phone the parent turned notifications on for. */
-export async function pushToParent(db: DB, parentId: string, kind: string, params: Record<string, any>): Promise<{ sent: number; failed: string[]; phones: number }> {
-  if (!pushReady()) return { sent: 0, failed: ['not_configured'], phones: 0 };
+export async function pushToParent(db: DB, parentId: string, kind: string, params: Record<string, any>): Promise<{ sent: number; failed: string[]; phones: number; stale: number }> {
+  if (!pushReady()) return { sent: 0, failed: ['not_configured'], phones: 0, stale: 0 };
   const { data: subs } = await db.from('push_subscriptions').select('id, endpoint, p256dh, auth, lang').eq('parent_id', parentId);
-  if (!subs?.length) return { sent: 0, failed: [], phones: 0 };
+  if (!subs?.length) return { sent: 0, failed: [], phones: 0, stale: 0 };
   let sent = 0;
+  let stale = 0;
   const failed: string[] = [];
   const ids: string[] = Array.isArray(params.child_ids) ? params.child_ids : [];
   const { data: kids } = ids.length ? await db.from('children').select('full_name').in('id', ids) : { data: [] as { full_name: string }[] };
@@ -42,12 +51,16 @@ export async function pushToParent(db: DB, parentId: string, kind: string, param
       } catch (e: any) {
         // The phone unsubscribed or the browser data was cleared: forget it.
         failed.push(`${e?.statusCode ?? ''} ${String(e?.body ?? e?.message ?? '').slice(0, 120)}`.trim());
-        if (e?.statusCode === 404 || e?.statusCode === 410) await db.from('push_subscriptions').delete().eq('id', s.id);
+        // 404/410: the phone unsubscribed. 401/403: the phone registered with older keys, so it must turn notifications on again.
+        if ([401, 403, 404, 410].includes(e?.statusCode)) {
+          stale++;
+          await db.from('push_subscriptions').delete().eq('id', s.id);
+        }
         else console.error('Push failed', e?.statusCode, e?.body ?? e?.message);
       }
     }),
   );
-  return { sent, failed, phones: subs.length };
+  return { sent, failed, phones: subs.length, stale };
 }
 
 /** Demo: a realistic "bus is 10 minutes away" alert, using the bus of the parent's first child. */

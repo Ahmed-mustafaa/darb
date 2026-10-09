@@ -8,6 +8,15 @@ function urlB64ToUint8Array(b64: string) {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
+/** Whether the phone's subscription was made with the key the server uses now. */
+function sameKey(sub: PushSubscription, vapidKey: string) {
+  const k = sub.options?.applicationServerKey;
+  if (!k) return true; // browser doesn't say: assume fine
+  const a = new Uint8Array(k);
+  const b = urlB64ToUint8Array(vapidKey);
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
 type State = 'checking' | 'off' | 'on' | 'blocked' | 'ios' | 'unsupported' | 'busy';
 
 /**
@@ -21,7 +30,7 @@ export function NotifyButton({
   vapidKey: string | null;
   labels: {
     turnOn: string; on: string; lead: string; blocked: string; ios: string; unsupported: string; test: string;
-    testSent: string; demo: string; demoWaiting: string; demoSent: string; errNotConfigured: string; errNoSubscription: string; errSendFailed: string; errSignin: string; errOffline: string;
+    testSent: string; demo: string; demoWaiting: string; demoSent: string; errNotConfigured: string; errKeysMismatch: string; errResubscribe: string; errNoSubscription: string; errSendFailed: string; errSignin: string; errOffline: string;
   };
 }) {
   const [state, setState] = useState<State>('checking');
@@ -45,7 +54,12 @@ export function NotifyButton({
       if (Notification.permission === 'denied') return setState('blocked');
       try {
         const reg = await navigator.serviceWorker.register('/sw.js');
-        const sub = await reg.pushManager.getSubscription();
+        let sub = await reg.pushManager.getSubscription();
+        if (sub && !sameKey(sub, vapidKey)) {
+          // Registered with old keys: Apple would refuse every message. Start over.
+          await sub.unsubscribe().catch(() => {});
+          sub = null;
+        }
         if (sub && Notification.permission === 'granted') {
           // Keep the server copy fresh (also covers a language change)
           await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub) });
@@ -87,12 +101,18 @@ export function NotifyButton({
       if (res.ok) return setResult({ ok: true, text: demo ? labels.demoSent : labels.testSent });
       const why: Record<string, string> = {
         not_configured: labels.errNotConfigured,
+        keys_mismatch: labels.errKeysMismatch,
+        resubscribe: labels.errResubscribe,
         no_subscription: labels.errNoSubscription,
         send_failed: labels.errSendFailed,
         signin: labels.errSignin,
       };
       setResult({ ok: false, text: `${why[body.error] ?? labels.errSendFailed}${body.detail ? ` (${body.detail})` : ''}` });
-      if (body.error === 'no_subscription') setState('off');
+      if (body.error === 'no_subscription' || body.error === 'resubscribe') {
+        const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+        await (await reg?.pushManager.getSubscription())?.unsubscribe().catch(() => {});
+        setState('off');
+      }
     } catch {
       setDemoLeft(0);
       // A demo request is cut off when the app is closed; the server still sends the alert.
@@ -116,6 +136,7 @@ export function NotifyButton({
       ) : (
         <>
           <p className="small">{labels.lead}</p>
+          {result && !result.ok && <p className="notice bad small" style={{ overflowWrap: 'anywhere' }}>{result.text}</p>}
           {state === 'ios' && <p className="notice bad small">{labels.ios}</p>}
           {state === 'blocked' && <p className="notice bad small">{labels.blocked}</p>}
           {state === 'unsupported' && <p className="small muted">{labels.unsupported}</p>}

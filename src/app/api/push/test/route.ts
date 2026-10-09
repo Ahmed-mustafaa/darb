@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getParentSession } from '@/lib/session';
-import { pushReady, pushToParent } from '@/lib/push';
+import { pushProblem, pushToParent } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,9 +9,11 @@ export const dynamic = 'force-dynamic';
 export async function POST() {
   const session = getParentSession();
   if (!session) return NextResponse.json({ error: 'signin' }, { status: 401 });
-  if (!pushReady()) return NextResponse.json({ error: 'not_configured' }, { status: 503 });
+  const problem = pushProblem();
+  if (problem) return NextResponse.json({ error: problem }, { status: 503 });
   const r = await pushToParent(createAdminClient(), session.pid, 'test', {});
   if (r.phones === 0) return NextResponse.json({ error: 'no_subscription' }, { status: 404 });
+  if (r.sent === 0 && r.stale === r.phones) return NextResponse.json({ error: 'resubscribe', detail: r.failed.join(' | ') }, { status: 409 });
   if (r.sent === 0) return NextResponse.json({ error: 'send_failed', detail: r.failed.join(' | ') }, { status: 502 });
   return NextResponse.json({ ok: true, sent: r.sent, phones: r.phones });
 }

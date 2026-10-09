@@ -170,6 +170,8 @@ export const PARENT = {
   n_testSent: ['Sent. It should appear within a few seconds. If not, check this phone’s notification settings for Darb (or your browser) and Focus / Do Not Disturb.', 'تم الإرسال. يجب أن يظهر خلال ثوانٍ. إن لم يظهر راجع إعدادات الإشعارات لدرب (أو للمتصفح) ووضع التركيز / عدم الإزعاج.'],
   n_errNotConfigured: ['The server has no notification keys yet (VAPID keys missing in .env.local or Vercel settings).', 'لا توجد مفاتيح الإشعارات على الخادم بعد (مفاتيح VAPID غير موجودة في ‎.env.local أو إعدادات Vercel).'],
   n_errNoSubscription: ['This phone isn’t registered for notifications. Tap Turn on notifications again.', 'هذا الموبايل غير مسجل للإشعارات. اضغط تفعيل الإشعارات مرة أخرى.'],
+  n_errKeysMismatch: ['The server’s two notification keys don’t belong together. In Vercel, VAPID_PRIVATE_KEY and NEXT_PUBLIC_VAPID_PUBLIC_KEY must come from the same generated pair.', 'مفتاحا الإشعارات على الخادم غير متطابقين. في Vercel يجب أن يكون VAPID_PRIVATE_KEY و NEXT_PUBLIC_VAPID_PUBLIC_KEY من نفس الزوج.'],
+  n_errResubscribe: ['This phone was registered with old settings. Tap Turn on notifications again, then retry.', 'هذا الموبايل مسجل بإعدادات قديمة. اضغط تفعيل الإشعارات مرة أخرى ثم أعد المحاولة.'],
   n_errSendFailed: ['The notification service refused the message', 'رفضت خدمة الإشعارات الرسالة'],
   n_errSignin: ['Please sign in again.', 'من فضلك سجّل الدخول مرة أخرى.'],
   n_errOffline: ['No connection. Try again.', 'لا يوجد اتصال. حاول مرة أخرى.'],

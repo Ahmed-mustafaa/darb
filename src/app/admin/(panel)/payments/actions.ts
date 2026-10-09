@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { autoAssignFamily } from '@/lib/assign';
 import { flash } from '@/lib/flash';
+import { periodFor } from '@/lib/subscription';
 
 const REASONS = ['not_received', 'wrong_amount', 'unreadable', 'duplicate'];
 
@@ -19,6 +20,11 @@ export async function confirmPayment(f: FormData) {
     .select('parent_id')
     .maybeSingle();
   if (error) redirect('/admin/payments?error=generic');
+  if (data?.parent_id) {
+    // The subscription runs from today (or right after the current one ends) for the package's months.
+    const { data: pay } = await supabase.from('payments').select('id, plan').eq('id', String(f.get('id'))).maybeSingle();
+    if (pay) await supabase.from('payments').update(await periodFor(supabase, data.parent_id, pay.plan, pay.id)).eq('id', pay.id);
+  }
   // Put the family's children on the best bus straight away; the admin can still move them.
   const assigned = data?.parent_id ? await autoAssignFamily(supabase, data.parent_id) : 0;
   revalidatePath('/admin', 'layout');
@@ -60,7 +66,10 @@ export async function recordPayment(f: FormData) {
   if (!(amount > 0)) redirect('/admin/payments?error=amount#record');
   const { count } = await supabase.from('children').select('id', { count: 'exact', head: true }).eq('parent_id', parentId);
   const now = new Date().toISOString();
+  const validPlan = (['month', 'term', 'year'].includes(plan) ? plan : 'month') as 'month' | 'term' | 'year';
+  const period = await periodFor(supabase, parentId, validPlan);
   const { error } = await supabase.from('payments').insert({
+    ...period,
     parent_id: parentId,
     plan: ['month', 'term', 'year'].includes(plan) ? plan : 'month',
     children_count: count ?? 1,

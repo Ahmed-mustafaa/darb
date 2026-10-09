@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getLocale, getT, type Key } from '@/lib/i18n';
-import { isLocked, loadSettings, requireFamily } from '@/lib/parent';
+import { canRenew, isLocked, loadSettings, requireFamily } from '@/lib/parent';
 import { egp, quote, recommendPlan, type PlanId } from '@/lib/pricing';
 import { Notice } from '@/components/ui';
 import { StepHead } from '@/components/parent';
@@ -9,7 +9,7 @@ import { choosePackage } from '../../actions';
 
 export default async function Package({ searchParams }: { searchParams: { error?: string } }) {
   const fam = await requireFamily();
-  if (isLocked(fam)) redirect('/parent');
+  if (isLocked(fam) && !canRenew(fam)) redirect('/parent');
   if (!fam.children.length) redirect('/register/children');
   const locale = getLocale();
   const t = getT(locale);
@@ -18,6 +18,7 @@ export default async function Package({ searchParams }: { searchParams: { error?
   const returning = fam.parent.is_returning;
   const rec = recommendPlan(n, returning);
   const selected: PlanId = fam.payment?.plan ?? rec;
+  const renewing = canRenew(fam);
   const plans: { id: PlanId; label: Key }[] = [
     { id: 'month', label: 'plan_month' },
     { id: 'term', label: 'plan_term' },
@@ -26,7 +27,7 @@ export default async function Package({ searchParams }: { searchParams: { error?
 
   return (
     <form className="stack" action={choosePackage}>
-      <StepHead step={4} t={t} backHref="/register/children" />
+      {renewing ? <a className="back" href="/parent">{t('back')}</a> : <StepHead step={4} t={t} backHref="/register/children" />}
       <h1>{t('p_pkgTitle')}</h1>
       <p className="lead">{t('p_forKids')} {n} {t('p_kidsWord')}</p>
       <Notice error={searchParams.error ? t('errorGeneric') : undefined} />

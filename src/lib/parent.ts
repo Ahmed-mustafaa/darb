@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getParentSession } from '@/lib/session';
 import type { Settings } from '@/lib/pricing';
+import { daysBetween, todayCairo } from '@/lib/subscription';
 
 export type Family = {
   parent: {
@@ -27,7 +28,15 @@ export type Family = {
     status: 'awaiting_payment' | 'awaiting_review' | 'paid' | 'rejected' | 'refunded';
     reject_reason: string | null;
     reference: string | null;
+    paid_at: string | null;
+    submitted_at: string | null;
+    created_at: string;
+    valid_from: string | null;
+    valid_until: string | null;
   } | null;
+  /** The paid payment covering today (or the most recent paid one), if any. */
+  active: (NonNullable<Family['payment']> & { daysLeft: number; expired: boolean }) | null;
+  history: NonNullable<Family['payment']>[];
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -48,10 +57,22 @@ export async function requireFamily(): Promise<Family> {
   const [{ data: parent }, { data: children }, { data: payments }] = await Promise.all([
     db.from('parents').select('*').eq('id', session.pid).maybeSingle(),
     db.from('children').select('id, full_name, school_id, grade, notes, bus_id').eq('parent_id', session.pid).order('created_at'),
-    db.from('payments').select('id, code, plan, children_count, amount, status, reject_reason, reference').eq('parent_id', session.pid).order('created_at', { ascending: false }).limit(1),
+    db
+      .from('payments')
+      .select('id, code, plan, children_count, amount, status, reject_reason, reference, paid_at, submitted_at, created_at, valid_from, valid_until')
+      .eq('parent_id', session.pid)
+      .order('created_at', { ascending: false })
+      .limit(24),
   ]);
   if (!parent) redirect('/register?error=session');
-  return { parent, children: children ?? [], payment: payments?.[0] ?? null } as Family;
+  const history = (payments ?? []) as NonNullable<Family['payment']>[];
+  const today = todayCairo();
+  const paid = history.filter((p) => p.status === 'paid').sort((a, b) => (b.valid_until ?? '').localeCompare(a.valid_until ?? ''));
+  const current = paid.find((p) => p.valid_from && p.valid_from <= today && (p.valid_until ?? '9999') >= today) ?? paid[0] ?? null;
+  const active = current
+    ? { ...current, daysLeft: current.valid_until ? daysBetween(today, current.valid_until) + 1 : 0, expired: !!current.valid_until && current.valid_until < today }
+    : null;
+  return { parent, children: children ?? [], payment: history[0] ?? null, active, history } as Family;
 }
 
 /** Where a family should continue its registration. */
@@ -63,8 +84,13 @@ export function nextStep(f: Family): string {
   return '/parent';
 }
 
-/** Registration details can only change before a receipt is sent. */
-export const isLocked = (f: Family) => !!f.payment && ['awaiting_review', 'paid', 'refunded'].includes(f.payment.status);
+/** Details can't change while a receipt is being checked or a paid subscription is running. */
+export const isLocked = (f: Family) =>
+  !!f.payment && (f.payment.status === 'awaiting_review' || (f.payment.status === 'paid' && !!f.active && !f.active.expired));
+
+/** A family can choose a new package when the subscription has ended or ends within 14 days. */
+export const canRenew = (f: Family) =>
+  !!f.payment && f.payment.status === 'paid' && !!f.active && (f.active.expired || f.active.daysLeft <= 14);
 
 export async function loadSettings() {
   const db = createAdminClient();

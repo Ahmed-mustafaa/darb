@@ -32,6 +32,7 @@ node -v   # should print v20 or newer
 5. New query again, paste `supabase/migrations/0003_parent_signin.sql`, press **Run**. This adds parent sign-in codes.
 6. New query again, paste `supabase/migrations/0004_trips_tracking.sql`, press **Run**. This adds trips, live tracking and parent alerts.
 7. New query again, paste `supabase/migrations/0005_passwords_push.sql`, press **Run**. This adds passwords and phone notifications.
+8. New query again, paste `supabase/migrations/0006_subscription_dates.sql`, press **Run**. This adds subscription start and end dates.
 
 ### 3. Connect the app to Supabase
 In the project folder, copy the example settings file:
@@ -172,3 +173,13 @@ src/lib/phone.ts                    Egyptian phone numbers
 - **Drivers and supervisors** sign in at `/crew` with the mobile number and password you set in *Drivers & supervisors*.
 - **Forgotten passwords:** *Admin → Families* (parents) or *Drivers & supervisors* (crew): type a new password, save, tell them.
 - After 8 wrong passwords in 15 minutes, that number is blocked for 15 minutes.
+
+## Parent home page
+After registering, parents land on their home page (`/parent`, also the home-screen icon):
+- **Subscription:** package, start and end date, days left with a progress bar, amount and payment code.
+  From 14 days before the end, a **Renew subscription** button appears; after it ends, the family is no longer
+  taken on trips until they renew. Renewing early starts the new period the day after the current one ends.
+- **Children** with school, grade, bus number and plate, supervisor (with phone) and driver.
+- **Live tracking** and **phone notifications** while the subscription is running.
+- **Pick-up address** and **payment history**.
+Subscription dates are set when you confirm (or record) a payment.

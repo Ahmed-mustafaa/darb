@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { distanceKm, type LatLng } from '@/lib/geo';
 import { pushToParent } from '@/lib/push';
+import { todayCairo } from '@/lib/subscription';
 
 type DB = SupabaseClient<any, any, any>;
 export type TripKind = 'morning' | 'afternoon';
@@ -105,9 +106,11 @@ export async function startTrip(db: DB, busId: string, kind: TripKind, staffId: 
   const [{ data: bus }, { data: kids }, { data: paid }] = await Promise.all([
     db.from('buses').select('id, number, school_id').eq('id', busId).single(),
     db.from('children').select('id, parent_id').eq('bus_id', busId),
-    db.from('payments').select('parent_id').eq('status', 'paid'),
+    db.from('payments').select('parent_id, valid_until').eq('status', 'paid'),
   ]);
-  const paidSet = new Set((paid ?? []).map((p: any) => p.parent_id));
+  const today = todayCairo();
+  // Families whose subscription covers today (payments confirmed before dates existed have no end date)
+  const paidSet = new Set((paid ?? []).filter((p: any) => !p.valid_until || p.valid_until >= today).map((p: any) => p.parent_id));
   const riders = (kids ?? []).filter((k: any) => paidSet.has(k.parent_id));
   const parentIds = [...new Set(riders.map((k: any) => k.parent_id))];
   const [{ data: parents }, { data: school }] = await Promise.all([

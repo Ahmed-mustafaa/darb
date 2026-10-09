@@ -2,6 +2,7 @@ import { getLocale, getT, type Key } from '@/lib/i18n';
 import { createClient } from '@/lib/supabase/server';
 import { displayPhone } from '@/lib/phone';
 import { egp } from '@/lib/pricing';
+import { formatDate } from '@/lib/subscription';
 import { Notice } from '@/components/ui';
 import { confirmPayment, recordPayment, rejectPayment } from './actions';
 
@@ -159,6 +160,9 @@ export default async function PaymentsPage({ searchParams }: { searchParams: { o
                     <td>
                       <span className={`chip ${STATUS_CLASS[p.status]}`}>{t(`status_${p.status}` as Key)}</span>
                       {p.status === 'rejected' && p.reject_reason && <span className="sub">{t(`reason_${p.reject_reason}` as Key)}</span>}
+                      {p.status === 'paid' && (p as any).valid_until && (
+                        <span className="sub">{t('h_until')} {formatDate((p as any).valid_until, locale)}</span>
+                      )}
                     </td>
                   </tr>
                 );

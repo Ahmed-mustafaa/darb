@@ -6,7 +6,7 @@ import { normalizeEgPhone } from '@/lib/phone';
 import { quote, type PlanId } from '@/lib/pricing';
 import { MIN_PASSWORD, checkPassword, hashPassword, recordAttempt, tooManyAttempts } from '@/lib/password';
 import { clearParentSession, getParentSession, setParentSession, setStaffSession } from '@/lib/session';
-import { isLocked, loadSettings, nextStep, requireFamily } from '@/lib/parent';
+import { canRenew, isLocked, loadSettings, nextStep, requireFamily } from '@/lib/parent';
 import { flash } from '@/lib/flash';
 
 const s = (f: FormData, k: string) => String(f.get(k) ?? '');
@@ -126,7 +126,7 @@ export async function saveChildren(f: FormData) {
 
 export async function choosePackage(f: FormData) {
   const fam = await requireFamily();
-  if (isLocked(fam)) redirect('/parent');
+  if (isLocked(fam) && !canRenew(fam)) redirect('/parent');
   if (!fam.children.length) redirect('/register/children');
   const plan = (['month', 'term', 'year'].includes(t(f, 'plan')) ? t(f, 'plan') : 'term') as PlanId;
   const { prices } = await loadSettings();
@@ -153,7 +153,8 @@ export async function submitReceipt(f: FormData) {
   const reference = t(f, 'reference');
   if (reference.length < 4 || reference.length > 60) redirect('/register/pay?error=ref');
   const file = f.get('screenshot');
-  if (!(file instanceof File) || file.size === 0 || file.size > 5 * 1024 * 1024 || !IMAGE_TYPES[file.type]) {
+  const isFile = (x: unknown): x is Blob => !!x && typeof x === 'object' && 'arrayBuffer' in (x as object) && 'size' in (x as object);
+  if (!isFile(file) || file.size === 0 || file.size > 5 * 1024 * 1024 || !IMAGE_TYPES[file.type]) {
     redirect('/register/pay?error=shot');
   }
 

@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Darb · درب',
     short_name: 'Darb',
     description: 'School transport, tracked live',
-    start_url: '/parent',
+    start_url: '/',
     display: 'standalone',
     background_color: '#F1F3EF',
     theme_color: '#F2A800',

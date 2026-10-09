@@ -205,3 +205,9 @@ td .sub { display: block; font-size: 12.5px; color: var(--muted); }
 .flash.show { transform: translate(-50%, 0); pointer-events: auto; cursor: pointer; }
 .flash-ic { width: 24px; height: 24px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; font-size: 13px; flex: none; }
 @media (prefers-reduced-motion: reduce) { .flash { transition: none; } }
+
+/* ───────── parent home ───────── */
+.row-between { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kidrow-home { display: grid; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.kidrow-home:last-child { border-bottom: 0; padding-bottom: 0; }
+.pnav { display: flex; gap: 4px; align-items: center; }

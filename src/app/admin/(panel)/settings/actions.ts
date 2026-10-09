@@ -44,7 +44,7 @@ export async function saveInstapay(f: FormData) {
   };
 
   const file = f.get('qr');
-  if (file instanceof File && file.size > 0) {
+  if (file && typeof file === 'object' && 'arrayBuffer' in file && file.size > 0) {
     if (!IMAGE_TYPES.includes(file.type) || file.size > 5 * 1024 * 1024) redirect('/admin/settings?error=image#instapay');
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
     const path = `qr-${Date.now()}.${ext}`; // new name each time so phones never show a cached old QR

@@ -1,8 +1,12 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getParentSession } from '@/lib/session';
 import { getLocale, getT } from '@/lib/i18n';
 import { BrandMark, LangSwitch } from '@/components/ui';
 
 export default function Home() {
+  // A signed-in parent opening the app (e.g. from the home-screen icon) lands on their home page
+  if (getParentSession()) redirect('/parent');
   const locale = getLocale();
   const t = getT(locale);
   return (
